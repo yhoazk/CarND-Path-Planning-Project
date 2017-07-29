@@ -21,7 +21,7 @@ You also know the **lane width** is 4 meters (this might be helpful in engineeri
 ## Instructions
 
 1. Implement the `train(self, data, labels)` and `predict(self, observation)` methods in the class `GNB` in `classifier.cpp`
-2. When you want to test your classifier, run `Test Run` and check out the results.
+2. When you want to test your classifier, run the executable file.
 
 **NOTE:** 
 You are welcome to use some existing implementation of a Gaussian Naive Bayes classifier. 
