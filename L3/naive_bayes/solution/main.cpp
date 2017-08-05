@@ -5,7 +5,7 @@ using namespace std;
 vector<vector<double> > Load_State(string file_name)
 {
     ifstream in_state_(file_name.c_str(), ifstream::in);
-    vector< vector<double >> state_out;
+    vector< vector<double> > state_out;
     string line;
     
     while (getline(in_state_, line)) 
@@ -28,6 +28,7 @@ vector<vector<double> > Load_State(string file_name)
     
 	    state_out.push_back(x_coord);
     }
+    std::cout << "Elements read: " << state_out.size() << std::endl;
     return state_out;
 }
 vector<string> Load_Label(string file_name)
@@ -49,10 +50,11 @@ vector<string> Load_Label(string file_name)
 
 int main() {
     
-	vector< vector<double> > X_train = Load_State("./train_states.txt");
-	vector< vector<double> > X_test  = Load_State("./test_states.txt");
-	vector< string > Y_train  = Load_Label("./train_labels.txt");
-	vector< string > Y_test   = Load_Label("./test_labels.txt");
+	vector< vector<double> > X_train = Load_State("../train_states.txt"); /* The directory where the exe is created is inside cmake-build-debug */
+	vector< vector<double> > X_test  = Load_State("../test_states.txt");
+
+	vector< string > Y_train  = Load_Label("../train_labels.txt");
+	vector< string > Y_test   = Load_Label("../test_labels.txt");
     
 	cout << "X_train number of elements " << X_train.size() << endl;
 	cout << "X_train element size " << X_train[0].size() << endl;
