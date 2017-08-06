@@ -17,6 +17,9 @@ class GNB {
   double var_right;
   double var_keep;
   const double lane_width = 4.0f;
+  double p_left;
+  double p_keep;
+  double p_right;
 public:
 
   vector<string> possible_labels = {"left","keep","right"};

@@ -68,6 +68,7 @@ int main() {
   {
     vector<double> coords = X_test[i];
     string predicted = gnb.predict(coords);
+    //cout << "Expected: " << Y_test[i] << ": ";
     if(predicted.compare(Y_test[i]) == 0)
     {
       score += 1;
