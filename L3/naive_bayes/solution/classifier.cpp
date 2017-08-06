@@ -47,6 +47,8 @@ void GNB::train(vector<vector<double>> data, vector<string> labels)
   double_t sum_keep  = 0;
   double_t sum_right = 0;
 
+  vector<double_t> omega_d(data.size());
+
   if(data.size() != labels.size())
   {
     /* Error, vectors do not match */
@@ -55,37 +57,75 @@ void GNB::train(vector<vector<double>> data, vector<string> labels)
 
     for(size_t i=0; i < data.size(); ++i)
     {
+      omega_d[i] =  fmod(data[i][1] , lane_width);// + data[i][1]/lane_width;
       if(0 == labels[i].compare(possible_labels[0]))
       {
         /*Left*/
         ++count_left;
-        sum_left += fmod(data[i][1] , lane_width) + data[i][1]/lane_width;
+        sum_left += omega_d[i];
       }
       else if(0 == labels[i].compare(possible_labels[1]))
       {
         /*keep*/
         ++count_keep;
-        sum_keep += fmod(data[i][1], lane_width) + data[i][1]/lane_width;
+        sum_keep += omega_d[i];
 
       } else{
         /* Assuming that there are not other values than the possible_labels */
         /* right */
         ++count_right;
-        sum_right += fmod(data[i][1], lane_width) + data[i][1]/lane_width;
+        sum_right += omega_d[i];
+
+      }
+    }
+
+
+    mean_left = sum_left / (double_t) count_left;
+    mean_keep = sum_keep / (double_t) count_keep;
+    mean_right= sum_right / (double_t) count_right;
+
+    /* Get the variance */
+    for (int j = 0; j < data.size(); ++j) {
+      if(0 == labels[j].compare(possible_labels[0]))
+      {
+        /*Left*/
+        var_left += omega_d[j] - mean_left;
+      }
+      else if(0 == labels[j].compare(possible_labels[1]))
+      {
+        /*keep*/
+        var_keep += omega_d[j] - mean_keep;
+
+      } else{
+        /* Assuming that there are not other values than the possible_labels */
+        /* right */
+        var_right += omega_d[j] - mean_right;
 
       }
     }
     std::cout << "=========================================" << std::endl;
-    std::cout << "Mean left: " << sum_left /* (double_t) count_left */ << std::endl;
-    std::cout << "Mean keep: " << sum_keep /*(double_t) count_keep*/  << std::endl;
-    std::cout << "Mean right: " <<sum_right /* (double_t) count_right*/ << std::endl;
+    std::cout << "Mean left: " << var_left << std::endl;
+    std::cout << "Mean keep: " << var_keep  << std::endl;
+    std::cout << "Mean right: " <<var_right << std::endl;
     std::cout << "=========================================" << std::endl;
 
   }
 
 }
 
-string GNB::predict(vector<double>)
+double_t GNB::calculate_posterior(double d, double_t m, double_t v)
+{
+  double_t  n,inv_sqrt;
+  n = (d - m);
+  n *=n;
+  n = -n/(2.0f * v);
+
+ inv_sqrt = sqrt(2.0f * M_PI *  v);
+
+  return exp(n)/inv_sqrt;
+}
+
+string GNB::predict(vector<double> x)
 {
   /*
     Once trained, this method is called and expected to return
@@ -103,7 +143,32 @@ string GNB::predict(vector<double>)
     """
     # TODO - complete this
   */
+  unsigned int result = 0; //<- this means left as result
+  double_t p_l, p_k, p_r;
+  /*calculate the probability that the measurement is left*/
+  p_l = calculate_posterior(x[1], mean_left, var_left);
+  /*calculate the probability that the measurement is keep*/
+  p_k = calculate_posterior(x[1], mean_keep, var_keep);
+  /*calculate the probability that the measurement is right*/
+  p_r = calculate_posterior(x[1], mean_right, var_right);
 
-  return this->possible_labels[1];
+  std::cout << "pl:" << p_l << " pk: " << p_k << " pr: " << p_r << std::endl;
+
+  if((p_l > p_k) && (p_l > p_r))
+  {
+    result = 0;
+    std::cout << "Left" << std::endl;
+  }
+  if((p_l > p_k) && (p_l > p_r))
+  {
+    result = 1;
+    std::cout << "Keep" << std::endl;
+  }
+  if((p_l > p_k) && (p_l > p_r))
+  {
+    result = 2;
+    std::cout << "right" << std::endl;
+  }
+  return this->possible_labels[result];
 
 }

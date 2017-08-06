@@ -9,14 +9,14 @@
 using namespace std;
 
 class GNB {
-  float mean_left;
-  float mean_right;
-  float mean_keep;
+  double mean_left;
+  double mean_right;
+  double mean_keep;
 
-  float var_left;
-  float var_right;
-  float var_keep;
-  const float lane_width = 4.0f;
+  double var_left;
+  double var_right;
+  double var_keep;
+  const double lane_width = 4.0f;
 public:
 
   vector<string> possible_labels = {"left","keep","right"};
@@ -33,6 +33,8 @@ public:
   virtual ~GNB();
 
   void train(vector<vector<double> > data, vector<string>  labels);
+
+  double_t calculate_posterior(double_t, double_t, double_t);
 
   string predict(vector<double>);
 
