@@ -38,3 +38,5 @@
 *.log
 
 cmake-build*/
+__pycache__
+uWebSockets/
