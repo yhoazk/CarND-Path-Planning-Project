@@ -41,7 +41,8 @@ int HBF::idx(double float_num) {
 }
 
 
-vector<HBF::maze_s> HBF::expand(HBF::maze_s state) {
+vector<HBF::maze_s> HBF::expand(HBF::maze_s state)
+{
   int g = state.g;
   double x = state.x;
   double y = state.y;
@@ -74,26 +75,26 @@ vector<HBF::maze_s> HBF::expand(HBF::maze_s state) {
 
 vector< HBF::maze_s> HBF::reconstruct_path(vector< vector< vector<HBF::maze_s> > > came_from, vector<double> start, HBF::maze_s final){
 
-vector<maze_s> path = {final};
+  vector<maze_s> path = {final};
 
-int stack = theta_to_stack_number(final.theta);
+  int stack = theta_to_stack_number(final.theta);
 
-maze_s current = came_from[stack][idx(final.x)][idx(final.y)];
+  maze_s current = came_from[stack][idx(final.x)][idx(final.y)];
 
-stack = theta_to_stack_number(current.theta);
+  stack = theta_to_stack_number(current.theta);
 
-double x = current.x;
-double y = current.y;
-while( x != start[0] && y != start[1] )
-{
-path.push_back(current);
-current = came_from[stack][idx(x)][idx(y)];
-x = current.x;
-y = current.y;
-stack = theta_to_stack_number(current.theta);
-}
+  double x = current.x;
+  double y = current.y;
+  while( x != start[0] && y != start[1] )
+  {
+    path.push_back(current);
+    current = came_from[stack][idx(x)][idx(y)];
+    x = current.x;
+    y = current.y;
+    stack = theta_to_stack_number(current.theta);
+  }
 
-return path;
+  return path;
 
 }
 
@@ -142,7 +143,7 @@ HBF::maze_path HBF::search(vector< vector<int> > grid, vector<double> start, vec
 
     }
     vector<maze_s> next_state = expand(next);
-
+    cout << "Next states len:" << next_state.size() << endl;
     for(int i = 0; i < next_state.size(); i++)
     {
       int g2 = next_state[i].g;
@@ -152,7 +153,7 @@ HBF::maze_path HBF::search(vector< vector<int> > grid, vector<double> start, vec
 
       if((x2 < 0 || x2 >= grid.size()) || (y2 < 0 || y2 >= grid[0].size()))
       {
-        //invalid cell
+        //invalid cell, out of boundaries
         continue;
       }
       int stack2 = theta_to_stack_number(theta2);
