@@ -120,13 +120,16 @@ void Vehicle::update_state(map<int, vector<vector<int> > > predictions)
   map<string,  vector<double_t>> costs; /* create an array of costst */
   for(auto it = possible_states.begin(); it!=possible_states.end(); ++it)
   {
+    /* From the possible actions to take (KL, LCR, LCL,PLCL,PLCR) calculate trajectory and cost */
+
+    /* Calculate trajectory for each possible action action */
     costs[it->first].push_back(lane_error(this->lane, this->goal_lane));
     costs[it->first].push_back(collision_avoid(0,0)); // this functions does not need any parameter
     costs[it->first].push_back(speed_error(this->v, this->target_speed));
   }
 
   /* Get the action with the minimum cost associated */
-  state = "LCR"; // this is an example of how you change state.
+  state = "KL"; // this is an example of how you change state.
 
 
 }
@@ -152,7 +155,9 @@ string Vehicle::display()
   oss << "lane: " << this->lane << "\n";
   oss << "v:    " << this->v << "\n";
   oss << "a:    " << this->a << "\n";
-
+  oss << "----------" << "\n";
+  oss << "goal lane: " << this->goal_lane << "\n";
+  oss << "goal v:    " << this->target_speed << "\n";
 
   return oss.str();
 }
