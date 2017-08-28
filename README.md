@@ -19,6 +19,18 @@ The highway's waypoints loop around so the frenet s value, distance along the ro
 3. Compile: `cmake .. && make`
 4. Run it: `./path_planning`.
 
+
+
+A controller its needed to keep the car within the acceleration and lanes without intervention.
+Then the intervention must be done only when needed, for example in the case of a possible collision.
+Or in the case that the vehicle is slowing down due to a vehicle in front.
+
+Then some parameters have to be controlled easily:
+* Current lane
+* Target speed
+* Min distance to other cars
+* 
+
 Here is the data provided from the Simulator to the C++ Program
 
 #### Main car's localization Data (No Noise)

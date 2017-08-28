@@ -24,28 +24,57 @@ Vehicle::Vehicle(int lane, int s, int v, int a)
 Vehicle::~Vehicle()
 {}
 /* The cost functions return a value between 0-1 */
-double_t lane_error(int current, int goal)
+// this function is for the case when we need to go from the goal lane
+// to far from it to rebase an obstacle
+#define COMFORT_COST   (1000.0f)
+#define GOAL_COST      (100000.0f)
+#define COLLISION_COST (1000000.0f)
+#define SPPED_COST     (100.0f)
+double_t lane_error(int proposed, int goal)
 {
+  /* This function returns a low value for chaning lane towards the goal lane and high for changing away from it */
+  double_t ret_val = 0;
+  if(proposed == goal)
+  {
+    ret_val = -COMFORT_COST;
+  }
+  else if(proposed != goal)
+  {
+    ret_val = COMFORT_COST;
+  }
+  return ret_val;
+}
 
+double_t goal_distance(int proposed, int goal_lane, int goal_s, int v_s, int v_lane)
+{
+  double_t cost = 0;
+  int rem_distance;
+  int rem_lanes;
+  int toa;
+  /* get the remainig distance to the goal s */
+  rem_distance = goal_s - v_s;
+  /* get the lane changes needed to reach the goal lane */
+  rem_lanes = fabs(goal_lane-v_lane);
+  toa = rem_distance / 10.0f;
+  cost =  rem_lanes / float(toa);
+
+  return cost;
 }
 double_t speed_error(int current_v, int goal_v)
 {
   return 0.5;
 }
-double_t collision_avoid(int current_lane, int ignore)
-{return 0.5;}
+/* Given the sate of the car check if the new state will collide or has a higher chance of colliding */
+double_t collision_avoid(vector<int> state, map<int, vector<vector<int> > > predictions )
+{
+
+  return 0.5;
+}
 double_t efficiency_cost(int k, int j){
   return 0.5;
 }
 
 typedef double_t (*pfnc)(int, int);
-
-pfnc costFunctions[] = {
-    lane_error,
-    speed_error,
-    collision_avoid
-};
-
 #define NUM_OF_COSTS  ((sizeof(costFunctions))/(sizeof(costFunctions[0])))
 
 
@@ -118,14 +147,50 @@ void Vehicle::update_state(map<int, vector<vector<int> > > predictions)
 
 
   map<string,  vector<double_t>> costs; /* create an array of costst */
+  vector<int> state_bkp(4);
+  vector<int> state_curr(4); // vector to pass
+  string car_state_bkp;
   for(auto it = possible_states.begin(); it!=possible_states.end(); ++it)
   {
     /* From the possible actions to take (KL, LCR, LCL,PLCL,PLCR) calculate trajectory and cost */
 
     /* Calculate trajectory for each possible action action */
+    /* Backup current state */
+    state_bkp[0] = this->lane;
+    state_bkp[1] = this->s;
+    state_bkp[2] = this->v;
+    state_bkp[3] = this->a;
+    state_curr[0] = this->lane;
+    state_curr[1] = this->s;
+    state_curr[2] = this->v;
+    state_curr[3] = this->a;
+    car_state_bkp = this->state;
+
+    /* Take current action from the list */
+    this->state = it->first;
+    this->realize_state(predictions);
+    this->increment(1);
+
+    for (auto it= predictions.begin(); it != predictions.end(); ++it)
+    {
+      //cout << it->first << "\n";
+    }
+
+
     costs[it->first].push_back(lane_error(this->lane, this->goal_lane));
-    costs[it->first].push_back(collision_avoid(0,0)); // this functions does not need any parameter
+    costs[it->first].push_back(collision_avoid(state_curr,predictions)); // this functions does not need any parameter
     costs[it->first].push_back(speed_error(this->v, this->target_speed));
+
+    /* Find the action with the minumum cost */
+
+
+    /* Restore the last state */
+
+    this->state = car_state_bkp;
+    this->lane  = state_bkp[0];
+    this->s     = state_bkp[1];
+    this->v     = state_bkp[2];
+    this->a     = state_bkp[3];
   }
 
   /* Get the action with the minimum cost associated */
