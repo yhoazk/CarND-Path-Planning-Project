@@ -31,6 +31,11 @@ Then some parameters have to be controlled easily:
 * Min distance to other cars
 * 
 
+The controller must take the past points and then create a new trajectory from those points, this reduces the 
+jerk due to non-smooth transitions.
+
+
+
 Here is the data provided from the Simulator to the C++ Program
 
 #### Main car's localization Data (No Noise)

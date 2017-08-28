@@ -159,6 +159,38 @@ vector<double> getXY(double s, double d, vector<double> maps_s, vector<double> m
 
 }
 
+
+
+#define LANE_0 (2.0f)
+#define LANE_1 (6.0f)
+#define LANE_2 (10.0f)
+
+vector<double> acceleration;
+
+
+double calculateAcceleration(double current, double target)
+{
+  static double integral_term = 0;
+  static double differen_term = 0;
+  static double last_err = 0;
+
+  static double P=0.15,I=0.001,D=0.19;
+
+  double increment;
+  double err = target - current;
+
+  differen_term = err - last_err;
+  last_err = err;
+  integral_term += err;
+
+  increment = (P * err) + (I * integral_term) + (D * differen_term);
+
+  cout << "inc: "  << increment <<  "  err: " << err  << " Veh speed: " << current << endl;
+
+
+  return  increment;
+}
+
 int main() {
   uWS::Hub h;
 
@@ -240,13 +272,36 @@ int main() {
 
 
           	// TODO: define a path made up of (x,y) points that the car will visit sequentially every .02 seconds
-            double dist_inc = 0.3;
+            static double dist_inc = 0.0;
+            double current_tgt_speed = 45.5;
+
+          #if 0
+          Para poder tener una aceleracion suave la separacion entre puntos debe ser pequeña.
+          por lo que el incremento de en la distancia debe poder calcularse respecto al error
+          entre la velocidad objetivo y la velocidad actual.
+
+
+          #endif
+            cout << "car speed: " << car_speed << "" << endl;
+//          dist_inc = calculateAcceleration(car_speed/100, current_tgt_speed);//
+          if(car_speed < current_tgt_speed)
+          {
+            dist_inc += .0125;
+          }
+          else if((car_speed - current_tgt_speed) >= 5.0f){
+            dist_inc -= 0.07;
+          }
             for(int i = 0; i < 50; i++)
             {
-              next_x_vals.push_back(car_x+(dist_inc*i)*cos(deg2rad(car_yaw)));
-              next_y_vals.push_back(car_y+(dist_inc*i)*sin(deg2rad(car_yaw)));
-            }
+							//next_x_vals.push_back(car_x+(dist_inc*i)*cos(deg2rad(car_yaw)));
 
+							auto cords = getXY(car_s+(dist_inc*i),LANE_1,map_waypoints_s,map_waypoints_x,map_waypoints_y);
+
+							next_x_vals.push_back(cords[0]);
+              //next_y_vals.push_back(car_y+(dist_inc*i)*sin(deg2rad(car_yaw)));
+							next_y_vals.push_back(cords[1]);
+            }
+						cout << "car_d:" << car_d << endl;
           	msgJson["next_x"] = next_x_vals;
           	msgJson["next_y"] = next_y_vals;
 
