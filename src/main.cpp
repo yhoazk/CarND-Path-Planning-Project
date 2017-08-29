@@ -8,6 +8,8 @@
 #include "Eigen-3.3/Eigen/Core"
 #include "Eigen-3.3/Eigen/QR"
 #include "json.hpp"
+#include "spline.h"
+
 
 using namespace std;
 
@@ -164,8 +166,21 @@ vector<double> getXY(double s, double d, vector<double> maps_s, vector<double> m
 #define LANE_0 (2.0f)
 #define LANE_1 (6.0f)
 #define LANE_2 (10.0f)
+#define CTRL_VECTOR_SIZE (40) // Size of the vector holding the planned points
 
-vector<double> acceleration;
+double current_lane = LANE_1;
+double next_lane = LANE_1;
+bool   change_lane= false;
+double current_tgt_speed = 45.5;
+double dist_inc = 0.0; // controls the acceleration
+
+
+// Load up map values for waypoint's x,y,s and d normalized normal vectors
+vector<double> map_waypoints_x;
+vector<double> map_waypoints_y;
+vector<double> map_waypoints_s;
+vector<double> map_waypoints_dx;
+vector<double> map_waypoints_dy;
 
 
 double calculateAcceleration(double current, double target)
@@ -190,16 +205,56 @@ double calculateAcceleration(double current, double target)
 
   return  increment;
 }
+/* Returns a vector of XY points as if the highway were clear to go */
+tk::spline getNextPoints(double current_s, double current_d, double ref_yaw)
+{
+  /*Takes the current lane to do the calculation */
+  vector<double> X, Y;
+
+  auto ref_vals = getXY(current_s, current_d, map_waypoints_s, map_waypoints_x, map_waypoints_y);
+  for(int i=0; i < 100;)
+  {
+    i +=25;
+    auto p = getXY(current_s+i, current_d, map_waypoints_s, map_waypoints_x, map_waypoints_y);
+    X.push_back(p[0]);
+    Y.push_back(p[1]);
+  }
+
+  for (int j = 0; j < X.size(); ++j) {
+    double transl_x = X[j] - ref_vals[0];
+    double transl_y = X[j] - ref_vals[1];
+    X[j] = transl_x * cos(0.0f-ref_yaw) - transl_y * sin(0.0f - ref_yaw);
+    Y[j] = transl_x * sin(0.0f-ref_yaw) + transl_y * cos(0.0f - ref_yaw);
+
+    cout << "px:" << X[j] << " py:" << Y[j] << endl;
+  }
+
+  tk::spline spl;
+  spl.set_points(X,Y);
+
+
+  return spl;
+}
+
+bool checkFrontCollision(void)
+{
+  return false;
+}
+
+bool checkLateralCollisionLeft(void)
+{
+  return false;
+}
+
+bool checkLateralCollisionRigth(void)
+{
+  return false;
+}
 
 int main() {
   uWS::Hub h;
 
-  // Load up map values for waypoint's x,y,s and d normalized normal vectors
-  vector<double> map_waypoints_x;
-  vector<double> map_waypoints_y;
-  vector<double> map_waypoints_s;
-  vector<double> map_waypoints_dx;
-  vector<double> map_waypoints_dy;
+
 
   // Waypoint map to read from
   string map_file_ = "../data/highway_map.csv";
@@ -248,65 +303,151 @@ int main() {
           // j[1] is the data JSON object
           
         	// Main car's localization Data
-          	double car_x = j[1]["x"];
-          	double car_y = j[1]["y"];
-          	double car_s = j[1]["s"];
-          	double car_d = j[1]["d"];
-          	double car_yaw = j[1]["yaw"];
-          	double car_speed = j[1]["speed"];
+          double car_x = j[1]["x"];
+          double car_y = j[1]["y"];
+          double car_s = j[1]["s"];
+          double car_d = j[1]["d"];
+          double car_yaw = j[1]["yaw"];
+          double car_speed = j[1]["speed"];
 
-          	// Previous path data given to the Planner
-          	auto previous_path_x = j[1]["previous_path_x"];
-          	auto previous_path_y = j[1]["previous_path_y"];
-          	// Previous path's end s and d values 
-          	double end_path_s = j[1]["end_path_s"];
-          	double end_path_d = j[1]["end_path_d"];
+          // Previous path data given to the Planner
+          auto previous_path_x = j[1]["previous_path_x"];
+          auto previous_path_y = j[1]["previous_path_y"];
+          // Previous path's end s and d values
+          double end_path_s = j[1]["end_path_s"];
+          double end_path_d = j[1]["end_path_d"];
 
-          	// Sensor Fusion Data, a list of all other cars on the same side of the road.
-          	auto sensor_fusion = j[1]["sensor_fusion"];
+          // Sensor Fusion Data, a list of all other cars on the same side of the road.
+          auto sensor_fusion = j[1]["sensor_fusion"];
 
-          	json msgJson;
+          json msgJson;
 
-          	vector<double> next_x_vals;
-          	vector<double> next_y_vals;
+          vector<double> next_x_vals;
+          vector<double> next_y_vals;
 
-
-          	// TODO: define a path made up of (x,y) points that the car will visit sequentially every .02 seconds
-            static double dist_inc = 0.0;
-            double current_tgt_speed = 45.5;
+          double pos_x, pos_y, yaw;
+          // TODO: define a path made up of (x,y) points that the car will visit sequentially every .02 seconds
 
           #if 0
-          Para poder tener una aceleracion suave la separacion entre puntos debe ser pequeña.
-          por lo que el incremento de en la distancia debe poder calcularse respecto al error
-          entre la velocidad objetivo y la velocidad actual.
+            Para poder tener una aceleracion suave la separacion entre puntos debe ser pequeña.
+            por lo que el incremento de en la distancia debe poder calcularse respecto al error
+            entre la velocidad objetivo y la velocidad actual.
 
+
+            Para que las transiciones entre los waypoints sean suaves hay que crear un spline entre ellos.
 
           #endif
-            cout << "car speed: " << car_speed << "" << endl;
-//          dist_inc = calculateAcceleration(car_speed/100, current_tgt_speed);//
-          if(car_speed < current_tgt_speed)
+          int current_path_size  = previous_path_x.size();
+          double pos_prev_x, pos_prev_y;
+          cout << "\n-last path size=" << current_path_size << endl;
+          cout << "Car x:" << car_x << " Car y: " << car_y << endl << "Pushing old vals: ";
+          for(int i = 0; i < current_path_size; ++i)
           {
-            dist_inc += .0125;
+            cout << previous_path_x[i] <<",";
+            next_x_vals.push_back(previous_path_x[i]);
+            next_y_vals.push_back(previous_path_y[i]);
           }
-          else if((car_speed - current_tgt_speed) >= 5.0f){
-            dist_inc -= 0.07;
+          cout << endl;
+          /* get two points from the last position to generate a new trajectory */
+          if(current_path_size > 1)
+          {
+            /* Copy the points from the last trajectory to ensure smooth change */
+            pos_x = previous_path_x[current_path_size-1];
+            pos_y = previous_path_y[current_path_size-1];
+            pos_prev_x = previous_path_x[current_path_size-2];
+            pos_prev_y = previous_path_y[current_path_size-2];
+
+            yaw = deg2rad(atan2(pos_y-pos_prev_y,pos_x-pos_prev_x));
+
+          } else{
+            /* Fresh start */
+            pos_x = car_x;
+            pos_y = car_y;
+            yaw = deg2rad(car_yaw);
+
           }
-            for(int i = 0; i < 50; i++)
+          cout << "car speed: " << car_speed << "" << endl;
+//          dist_inc = calculateAcceleration(car_speed/100, current_tgt_speed);//
+
+          /**********************************************************************/
+          /*Takes the current lane to do the calculation */
+          vector<double> X, Y;
+
+          /* The last points to ensure continuity */
+//          X.push_back(pos_prev_x); Y.push_back(pos_prev_y);
+          X.push_back(pos_x); Y.push_back(pos_y);
+          auto ref_vals = getXY(car_s, car_d, map_waypoints_s, map_waypoints_x, map_waypoints_y);
+          for(int i=0; i < 100;)
+          {
+            i +=25;
+            auto p = getXY(car_s+i, car_d, map_waypoints_s, map_waypoints_x, map_waypoints_y);
+            X.push_back(p[0]);
+            Y.push_back(p[1]);
+          }
+
+          for (int j = 0; j < X.size(); ++j)
+          {
+            double transl_x = X[j] - pos_x;
+            double transl_y = Y[j] - pos_y;
+            X[j] = transl_x * cos(0.0f-yaw) - transl_y * sin(0.0f - yaw);
+            Y[j] = transl_x * sin(0.0f-yaw) + transl_y * cos(0.0f - yaw);
+            cout << "px:" << X[j] << " py:" << Y[j] << endl;
+          }
+
+          tk::spline spl;
+          spl.set_points(X,Y);
+          /***************************************************************/
+
+
+           if(car_speed < current_tgt_speed)
             {
-							//next_x_vals.push_back(car_x+(dist_inc*i)*cos(deg2rad(car_yaw)));
+              dist_inc += .0125;
+            }
+            else if((car_speed - current_tgt_speed) >= 5.0f)
+            {
+              dist_inc -= 0.07;
+            }
 
-							auto cords = getXY(car_s+(dist_inc*i),LANE_1,map_waypoints_s,map_waypoints_x,map_waypoints_y);
+            /* Generate a smooth trajectory between the current position and the next waypoint */
 
-							next_x_vals.push_back(cords[0]);
-              //next_y_vals.push_back(car_y+(dist_inc*i)*sin(deg2rad(car_yaw)));
-							next_y_vals.push_back(cords[1]);
+          //  auto spline = getNextPoints(car_s-1,car_d, yaw);
+            //auto cords = getXY(car_s-(1),car_d,map_waypoints_s,map_waypoints_x,map_waypoints_y);
+            double increment = 0;
+            /* the spline rotated the coords so we need to rotate them back */
+            for(int i = 0; i < CTRL_VECTOR_SIZE-previous_path_x.size(); i++)
+            {
+//							next_x_vals.push_back(car_x+(dist_inc*i)*cos(deg2rad(car_yaw)));
+//              next_y_vals.push_back(car_y+(dist_inc*i)*sin(deg2rad(car_yaw)));
+              cout << "." ;
+              #if test
+              cout << "." ;
+							auto cords = getXY(car_s+(dist_inc*i),current_lane,map_waypoints_s,map_waypoints_x,map_waypoints_y);
+              next_x_vals.push_back(cords[0]);
+              next_y_vals.push_back(cords[1]);
+              #endif
+
+              double N =  (20/ (0.02f * current_tgt_speed / 2.24f));
+              double x = increment+(20/N);
+              double y = spl(x);
+              double x_tmp=0, y_tmp=0;
+              increment = x;
+              x_tmp = x;
+              y_tmp = y;
+
+              x = (x_tmp * cos(yaw) - y_tmp * sin(yaw));
+              y = (x_tmp * sin(yaw) + y_tmp * cos(yaw));
+
+              x += pos_x; y += pos_y;
+
+							next_x_vals.push_back(x);
+							next_y_vals.push_back(y);
             }
 						cout << "car_d:" << car_d << endl;
           	msgJson["next_x"] = next_x_vals;
           	msgJson["next_y"] = next_y_vals;
 
           	auto msg = "42[\"control\","+ msgJson.dump()+"]";
-
+            cout << msg;
           	//this_thread::sleep_for(chrono::milliseconds(1000));
           	ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
           
