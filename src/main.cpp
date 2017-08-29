@@ -166,7 +166,7 @@ vector<double> getXY(double s, double d, vector<double> maps_s, vector<double> m
 #define LANE_0 (2.0f)
 #define LANE_1 (6.0f)
 #define LANE_2 (10.0f)
-#define CTRL_VECTOR_SIZE (40) // Size of the vector holding the planned points
+#define CTRL_VECTOR_SIZE (60) // Size of the vector holding the planned points
 
 double current_lane = LANE_1;
 double next_lane = LANE_1;
@@ -377,15 +377,15 @@ int main() {
           /* The last points to ensure continuity */
 //          X.push_back(pos_prev_x); Y.push_back(pos_prev_y);
           X.push_back(pos_x); Y.push_back(pos_y);
-          auto ref_vals = getXY(car_s, car_d, map_waypoints_s, map_waypoints_x, map_waypoints_y);
           for(int i=0; i < 100;)
           {
-            i +=25;
-            auto p = getXY(car_s+i, car_d, map_waypoints_s, map_waypoints_x, map_waypoints_y);
+            i +=30;
+            auto p = getXY(car_s+i, current_lane, map_waypoints_s, map_waypoints_x, map_waypoints_y);
             X.push_back(p[0]);
             Y.push_back(p[1]);
+            cout << "spx:" << p[0] << " spy:" << p[1] << endl;
           }
-
+          cout << "--------------\npos_x:" << pos_x << " pos_y:" << pos_y << endl;
           for (int j = 0; j < X.size(); ++j)
           {
             double transl_x = X[j] - pos_x;
@@ -411,6 +411,7 @@ int main() {
 
           currtent_speed += calculateAcceleration(car_speed, current_tgt_speed);
           cout << "current speed: " << currtent_speed << endl;
+          cout << "car speed: " << car_speed << endl;
             /* Generate a smooth trajectory between the current position and the next waypoint */
 
           //  auto spline = getNextPoints(car_s-1,car_d, yaw);
