@@ -416,8 +416,15 @@ int main() {
 
           //  auto spline = getNextPoints(car_s-1,car_d, yaw);
             //auto cords = getXY(car_s-(1),car_d,map_waypoints_s,map_waypoints_x,map_waypoints_y);
-            double increment = 0;
+          double increment = 0;
+          double dist_x = 20;
+          double dist_y = spl(dist_x);
+          double mag_dist = distance(0, 0,dist_x, dist_y);
+          cout << "distx: " << dist_x << " dist y:" << dist_y << " magxy: " << mag_dist << endl;
+
             /* the spline rotated the coords so we need to rotate them back */
+
+
             for(int i = 0; i < CTRL_VECTOR_SIZE-previous_path_x.size(); i++)
             {
 //							next_x_vals.push_back(car_x+(dist_inc*i)*cos(deg2rad(car_yaw)));
@@ -429,9 +436,9 @@ int main() {
               next_x_vals.push_back(cords[0]);
               next_y_vals.push_back(cords[1]);
               #endif
-
-              double N =  (20/ (0.02f * currtent_speed / 2.24f));
-              double x = increment+(20/N);
+              /* we must take into account the curvature or the speed goes out of bound */
+              double N =  (mag_dist/ (0.02f * currtent_speed / 2.24f));
+              double x = increment+(dist_x/N);
               double y = spl(x);
               double x_tmp=0, y_tmp=0;
               increment = x;
