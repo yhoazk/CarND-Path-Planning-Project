@@ -172,7 +172,7 @@ double current_lane = LANE_1;
 double next_lane = LANE_1;
 bool   change_lane= false;
 double current_tgt_speed = 45.5;
-double dist_inc = 0.0; // controls the acceleration
+double currtent_speed = 0.0; // controls the acceleration
 
 
 // Load up map values for waypoint's x,y,s and d normalized normal vectors
@@ -189,7 +189,7 @@ double calculateAcceleration(double current, double target)
   static double differen_term = 0;
   static double last_err = 0;
 
-  static double P=0.15,I=0.001,D=0.19;
+  static double P=0.015,I=0.00003,D=0.0019;
 
   double increment;
   double err = target - current;
@@ -200,11 +200,12 @@ double calculateAcceleration(double current, double target)
 
   increment = (P * err) + (I * integral_term) + (D * differen_term);
 
-  cout << "inc: "  << increment <<  "  err: " << err  << " Veh speed: " << current << endl;
+ // cout << "inc: "  << increment <<  "  err: " << err  << " Veh speed: " << current << endl;
 
 
   return  increment;
 }
+
 /* Returns a vector of XY points as if the highway were clear to go */
 tk::spline getNextPoints(double current_s, double current_d, double ref_yaw)
 {
@@ -343,7 +344,7 @@ int main() {
           cout << "Car x:" << car_x << " Car y: " << car_y << endl << "Pushing old vals: ";
           for(int i = 0; i < current_path_size; ++i)
           {
-            cout << previous_path_x[i] <<",";
+            //cout << previous_path_x[i] <<",";
             next_x_vals.push_back(previous_path_x[i]);
             next_y_vals.push_back(previous_path_y[i]);
           }
@@ -398,16 +399,18 @@ int main() {
           spl.set_points(X,Y);
           /***************************************************************/
 
+          /*
+          if(car_speed < current_tgt_speed)
+          {
+            currtent_speed += 1.0;
+          }
+          else if((car_speed - current_tgt_speed) >= 2.0f)
+          {
+            currtent_speed -= 1.0;
+          }*/
 
-           if(car_speed < current_tgt_speed)
-            {
-              dist_inc += .0125;
-            }
-            else if((car_speed - current_tgt_speed) >= 5.0f)
-            {
-              dist_inc -= 0.07;
-            }
-
+          currtent_speed += calculateAcceleration(car_speed, current_tgt_speed);
+          cout << "current speed: " << currtent_speed << endl;
             /* Generate a smooth trajectory between the current position and the next waypoint */
 
           //  auto spline = getNextPoints(car_s-1,car_d, yaw);
@@ -426,7 +429,7 @@ int main() {
               next_y_vals.push_back(cords[1]);
               #endif
 
-              double N =  (20/ (0.02f * current_tgt_speed / 2.24f));
+              double N =  (20/ (0.02f * currtent_speed / 2.24f));
               double x = increment+(20/N);
               double y = spl(x);
               double x_tmp=0, y_tmp=0;
