@@ -167,12 +167,13 @@ vector<double> getXY(double s, double d, vector<double> maps_s, vector<double> m
 #define LANE_1 (6.0f)
 #define LANE_2 (10.0f)
 #define CTRL_VECTOR_SIZE (60) // Size of the vector holding the planned points
-
+#define MIN_CAR_DIST (50.0f)
+#define MAX_SPEED    (49.0f)
 double current_lane = LANE_1;
 double next_lane = LANE_1;
 bool   change_lane= false;
 double current_tgt_speed = 40.5;
-double currtent_speed = 0.0; // controls the acceleration
+double current_speed = 0.0; // controls the acceleration
 
 
 // Load up map values for waypoint's x,y,s and d normalized normal vectors
@@ -237,20 +238,6 @@ tk::spline getNextPoints(double current_s, double current_d, double ref_yaw)
   return spl;
 }
 
-bool checkFrontCollision(void)
-{
-  return false;
-}
-
-bool checkLateralCollisionLeft(void)
-{
-  return false;
-}
-
-bool checkLateralCollisionRigth(void)
-{
-  return false;
-}
 
 int main() {
   uWS::Hub h;
@@ -329,6 +316,7 @@ int main() {
           double pos_x, pos_y, yaw;
           // TODO: define a path made up of (x,y) points that the car will visit sequentially every .02 seconds
 
+          int current_path_size  = previous_path_x.size();
           #if 0
             Para poder tener una aceleracion suave la separacion entre puntos debe ser pequeña.
             por lo que el incremento de en la distancia debe poder calcularse respecto al error
@@ -337,12 +325,98 @@ int main() {
 
             Para que las transiciones entre los waypoints sean suaves hay que crear un spline entre ellos.
 
+            interpretar como es que llega la informacion de la telemetria para despues analizarla
+            - Descomponer por lineas
+
           #endif
-          int current_path_size  = previous_path_x.size();
+
+          /* Get possible collisions */
+          vector<double > collide_nwse = {0,0,0,0};
+          for (int k = 0; k < sensor_fusion.size(); ++k) {
+            /* sensor fusion is an array of values [ id, x, y, vx, vy, s, d]. */
+
+            /*For each car */
+            double vehicle_d = sensor_fusion[k][6];
+            double vehicle_s = sensor_fusion[k][5];
+            double vx = sensor_fusion[k][3];
+            double vy = sensor_fusion[k][4];
+            /* adding the change in position due to speed */
+            vehicle_s += 0.02 * current_path_size * sqrt(vx*vx + vy*vy);
+            double delta_s = vehicle_s - car_s;
+            int v_lane;
+            if((0.0 < vehicle_d) && (3.5 > vehicle_d))
+            {
+              v_lane = LANE_0;
+            }
+            else if((3.5 <= vehicle_d) && (7.5 > vehicle_d))
+            {
+              v_lane = LANE_1;
+            }
+            else
+            {
+              /* supposing that the car is in the highwat always */
+              v_lane = LANE_2;
+            }
+            /* check if the other vehicle is in the same lane */
+            if(fabs(v_lane - current_lane) < 0.1)
+            {
+              /* The vehicle and this car are in the same lane */
+              if(delta_s > 0.0)
+              {
+                /*the car is in front of us*/
+                if(delta_s < MIN_CAR_DIST+10.0){
+                  if(collide_nwse[0] < 0.5)
+                  {
+                    collide_nwse[0] = delta_s; // possible front collision
+                  } else{
+                    collide_nwse[0] = min(delta_s, collide_nwse[0]);
+                  }
+                  cout << "\nDelta: " << delta_s << endl; // la magnitud de delta debe ser inversamente proporcional al frenado
+                } else{
+                  collide_nwse[0] = 0;
+                }
+              }
+              else
+              {
+
+              }
+
+            } else{ /* the vehicle is not in the same lane */
+              /* the vehicle is close? */
+              if(fabs(car_s - vehicle_s) < MIN_CAR_DIST)
+              {
+                if(delta_s > 0.0)
+                {
+                  /* The vehicle is in front */
+
+                }
+
+              } else{
+                /*the vehicle is not close enough, ignore */
+              }
+            }
+          }
+          /* Get possible collisions */
+
           double pos_prev_x, pos_prev_y;
           vector<double> X, Y;
           cout << "\n-last path size=" << current_path_size << endl;
           cout << "Car x:" << car_x << " Car y: " << car_y << endl << "Pushing old vals: ";
+
+          current_speed += calculateAcceleration(car_speed, current_tgt_speed);
+          if(collide_nwse[0] !=0)
+          {
+            cout << "POSSIBLE FRONT COLLISION" << collide_nwse[0] << endl;
+            current_tgt_speed = 25;
+
+          }
+          else{
+            current_tgt_speed = MAX_SPEED;
+            if(current_tgt_speed < MAX_SPEED)
+            {
+
+            }
+          }
           for(int i = 0; i < current_path_size; ++i)
           {
             //cout << previous_path_x[i] <<",";
@@ -384,7 +458,7 @@ int main() {
             auto p = getXY(car_s+i, current_lane, map_waypoints_s, map_waypoints_x, map_waypoints_y);
             X.push_back(p[0]);
             Y.push_back(p[1]);
-            cout << "spx:" << p[0] << " spy:" << p[1] << endl;
+            //cout << "spx:" << p[0] << " spy:" << p[1] << endl;
           }
           cout << "--------------\npos_x:" << pos_x << " pos_y:" << pos_y << " yaw: " << yaw << endl << endl;
           for (int j = 0; j < X.size(); ++j)
@@ -396,15 +470,14 @@ int main() {
             ny = transl_x * sin(0.0f-yaw) + transl_y * cos(0.0f - yaw);
             X[j] = nx;
             Y[j] = ny;
-            cout << "px:" << X[j] << " py:" << Y[j] << " transl_x:" << transl_x << " transly: " << transl_y << " sin: " <<  sin(yaw) << " cos: " << cos(yaw) << endl;
+            //cout << "px:" << X[j] << " py:" << Y[j] << " transl_x:" << transl_x << " transly: " << transl_y << " sin: " <<  sin(yaw) << " cos: " << cos(yaw) << endl;
           }
 
           tk::spline spl;
           spl.set_points(X,Y);
           /***************************************************************/
 
-          currtent_speed += calculateAcceleration(car_speed, current_tgt_speed);
-          cout << "current speed: " << currtent_speed << endl;
+          cout << "current speed: " << current_speed << endl;
           cout << "car speed: " << car_speed << endl;
             /* Generate a smooth trajectory between the current position and the next waypoint */
 
@@ -431,7 +504,7 @@ int main() {
               next_y_vals.push_back(cords[1]);
               #endif
               /* we must take into account the curvature or the speed goes out of bound */
-              double N =  (mag_dist/ (0.02f * currtent_speed / 2.24f));
+              double N =  (mag_dist/ (0.02f * current_speed / 2.24f));
               double x = increment+(dist_x/N);
               double y = spl(x);
               double x_tmp=0, y_tmp=0;
@@ -452,7 +525,6 @@ int main() {
           	msgJson["next_y"] = next_y_vals;
 
           	auto msg = "42[\"control\","+ msgJson.dump()+"]";
-            cout << msg;
           	//this_thread::sleep_for(chrono::milliseconds(1000));
           	ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
           
