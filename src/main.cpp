@@ -168,7 +168,7 @@ vector<double> getXY(double s, double d, vector<double> maps_s, vector<double> m
 #define LANE_2 (10.0f)
 #define CTRL_VECTOR_SIZE (60) // Size of the vector holding the planned points
 #define MIN_CAR_DIST (50.0f)
-#define MAX_SPEED    (49.0f)
+#define MAX_SPEED    (45.0f)
 double current_lane = LANE_1;
 double next_lane = LANE_1;
 bool   change_lane= false;
@@ -363,7 +363,7 @@ int main() {
               /* The vehicle and this car are in the same lane */
               if(delta_s > 0.0)
               {
-                /*the car is in front of us*/
+                /*the car is in front of us?*/
                 if(delta_s < MIN_CAR_DIST+10.0){
                   if(collide_nwse[0] < 0.5)
                   {
@@ -406,16 +406,12 @@ int main() {
           current_speed += calculateAcceleration(car_speed, current_tgt_speed);
           if(collide_nwse[0] !=0)
           {
-            cout << "POSSIBLE FRONT COLLISION" << collide_nwse[0] << endl;
-            current_tgt_speed = 25;
+            current_tgt_speed = 10.0 + 20.0*(collide_nwse[0]/MIN_CAR_DIST);
+            cout << "POSSIBLE FRONT COLLISION " << collide_nwse[0] << " New Tgt speed: " << current_tgt_speed << endl;
 
           }
           else{
             current_tgt_speed = MAX_SPEED;
-            if(current_tgt_speed < MAX_SPEED)
-            {
-
-            }
           }
           for(int i = 0; i < current_path_size; ++i)
           {
@@ -443,7 +439,6 @@ int main() {
             yaw = deg2rad(car_yaw);
 
           }
-          cout << "car speed: " << car_speed << "" << endl;
 //          dist_inc = calculateAcceleration(car_speed/100, current_tgt_speed);//
 
           /**********************************************************************/
@@ -477,8 +472,8 @@ int main() {
           spl.set_points(X,Y);
           /***************************************************************/
 
-          cout << "current speed: " << current_speed << endl;
-          cout << "car speed: " << car_speed << endl;
+          cout << "Desired car speed: " << current_speed << endl;
+          cout << "Real car speed: " << car_speed << endl;
             /* Generate a smooth trajectory between the current position and the next waypoint */
 
           //  auto spline = getNextPoints(car_s-1,car_d, yaw);
