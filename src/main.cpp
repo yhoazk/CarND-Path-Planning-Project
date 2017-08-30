@@ -171,7 +171,7 @@ vector<double> getXY(double s, double d, vector<double> maps_s, vector<double> m
 double current_lane = LANE_1;
 double next_lane = LANE_1;
 bool   change_lane= false;
-double current_tgt_speed = 45.5;
+double current_tgt_speed = 40.5;
 double currtent_speed = 0.0; // controls the acceleration
 
 
@@ -340,6 +340,7 @@ int main() {
           #endif
           int current_path_size  = previous_path_x.size();
           double pos_prev_x, pos_prev_y;
+          vector<double> X, Y;
           cout << "\n-last path size=" << current_path_size << endl;
           cout << "Car x:" << car_x << " Car y: " << car_y << endl << "Pushing old vals: ";
           for(int i = 0; i < current_path_size; ++i)
@@ -358,7 +359,8 @@ int main() {
             pos_prev_x = previous_path_x[current_path_size-2];
             pos_prev_y = previous_path_y[current_path_size-2];
 
-            yaw = deg2rad(atan2(pos_y-pos_prev_y,pos_x-pos_prev_x));
+            yaw = (atan2(pos_y-pos_prev_y,pos_x-pos_prev_x));
+            X.push_back(pos_prev_x); Y.push_back(pos_prev_y);
 
           } else{
             /* Fresh start */
@@ -372,42 +374,34 @@ int main() {
 
           /**********************************************************************/
           /*Takes the current lane to do the calculation */
-          vector<double> X, Y;
 
           /* The last points to ensure continuity */
 //          X.push_back(pos_prev_x); Y.push_back(pos_prev_y);
           X.push_back(pos_x); Y.push_back(pos_y);
-          for(int i=0; i < 100;)
+          for(int i=0; i < 160;)
           {
-            i +=30;
+            i +=40;
             auto p = getXY(car_s+i, current_lane, map_waypoints_s, map_waypoints_x, map_waypoints_y);
             X.push_back(p[0]);
             Y.push_back(p[1]);
             cout << "spx:" << p[0] << " spy:" << p[1] << endl;
           }
-          cout << "--------------\npos_x:" << pos_x << " pos_y:" << pos_y << endl;
+          cout << "--------------\npos_x:" << pos_x << " pos_y:" << pos_y << " yaw: " << yaw << endl << endl;
           for (int j = 0; j < X.size(); ++j)
           {
             double transl_x = X[j] - pos_x;
             double transl_y = Y[j] - pos_y;
-            X[j] = transl_x * cos(0.0f-yaw) - transl_y * sin(0.0f - yaw);
-            Y[j] = transl_x * sin(0.0f-yaw) + transl_y * cos(0.0f - yaw);
-            cout << "px:" << X[j] << " py:" << Y[j] << endl;
+            double nx,ny;
+            nx = transl_x * cos(0.0f-yaw) - transl_y * sin(0.0f - yaw);
+            ny = transl_x * sin(0.0f-yaw) + transl_y * cos(0.0f - yaw);
+            X[j] = nx;
+            Y[j] = ny;
+            cout << "px:" << X[j] << " py:" << Y[j] << " transl_x:" << transl_x << " transly: " << transl_y << " sin: " <<  sin(yaw) << " cos: " << cos(yaw) << endl;
           }
 
           tk::spline spl;
           spl.set_points(X,Y);
           /***************************************************************/
-
-          /*
-          if(car_speed < current_tgt_speed)
-          {
-            currtent_speed += 1.0;
-          }
-          else if((car_speed - current_tgt_speed) >= 2.0f)
-          {
-            currtent_speed -= 1.0;
-          }*/
 
           currtent_speed += calculateAcceleration(car_speed, current_tgt_speed);
           cout << "current speed: " << currtent_speed << endl;
