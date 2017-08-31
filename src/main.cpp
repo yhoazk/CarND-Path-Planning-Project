@@ -331,7 +331,13 @@ int main() {
           #endif
 
           /* Get possible collisions */
-          vector<double > collide_nwse = {0,0,0,0};
+          /* This vector represents the location of cars which are close to  */
+          /* _1___0___2_   */
+          /* ___________   */
+          /* _3__xxx__4_   */
+          /* ___________   */
+          /* ___________   */
+          vector<double > collide_nwse = {0,0,0,0,0};
           for (int k = 0; k < sensor_fusion.size(); ++k) {
             /* sensor fusion is an array of values [ id, x, y, vx, vy, s, d]. */
 
@@ -382,17 +388,22 @@ int main() {
               }
 
             } else{ /* the vehicle is not in the same lane */
-              /* the vehicle is close? */
-              if(fabs(car_s - vehicle_s) < MIN_CAR_DIST)
+              /* is the vehicle behind us? */
+              if(delta_s > MIN_CAR_DIST/2)
               {
-                if(delta_s > 0.0)
+                /* vehicle in front */
+                if(fabs(car_s - vehicle_s) < MIN_CAR_DIST)
                 {
-                  /* The vehicle is in front */
 
+                } else{
+                  /*the vehicle is not close enough, ignore */
                 }
-
+              }
+              else if(delta_s < MIN_CAR_DIST/2)
+              {
+                /* vehicle at our size */
               } else{
-                /*the vehicle is not close enough, ignore */
+                /* vehicle behind us */
               }
             }
           }

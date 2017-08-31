@@ -8,7 +8,7 @@ int main(int argc, char** argv) {
    std::vector<double> X, Y;
 
 /*  X.push_back(2313.55); Y.push_back(2427.66);
-X.push_back(2321.75); Y.push_back(2467.01);
+X.push_back(2321.75); Y.push_back(2467.01);
 X.push_back(2328.86); Y.push_back(2506.45);
 X.push_back(2335.52); Y.push_back(2546.39);*/
 
