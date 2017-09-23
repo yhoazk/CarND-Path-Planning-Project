@@ -169,6 +169,18 @@ vector<double> getXY(double s, double d, vector<double> maps_s, vector<double> m
 #define CTRL_VECTOR_SIZE (60) // Size of the vector holding the planned points
 #define MIN_CAR_DIST (50.0f)
 #define MAX_SPEED    (45.0f)
+/* Grid parameters */
+#define GRID_COLS (3)
+#define FRONT_GRID (10)
+#define REAR_GRID (5)
+#define GRID_ROWS (FRONT_GRID + REAR_GRID ) /* Number of lane lines */
+
+#define LANE_WIDTH (4.0f)
+/* there will be 5 rows behind and 9 in front */
+#define set_vechile(x,y) (grid[x][y] = '.')
+
+
+
 double current_lane = LANE_1;
 double next_lane = LANE_1;
 bool   change_lane= false;
@@ -183,6 +195,27 @@ vector<double> map_waypoints_s;
 vector<double> map_waypoints_dx;
 vector<double> map_waypoints_dy;
 
+vector<vector<char>> grid;
+
+void printGrid(void)
+{
+  for (int i = 0; i < GRID_ROWS; ++i) {
+    for (int j = 0; j < GRID_COLS; ++j) {
+      cout << grid[i][j];
+    }
+    cout << endl;
+  }
+}
+
+
+void fillGrid(void)
+{
+  for (int i = 0; i < GRID_ROWS; ++i)
+  {
+    grid[i].resize(GRID_COLS);
+    fill(grid[i].begin(), grid[i].end(), '#');
+  }
+}
 
 double calculateAcceleration(double current, double target)
 {
@@ -239,10 +272,21 @@ tk::spline getNextPoints(double current_s, double current_d, double ref_yaw)
 }
 
 
+
+
 int main() {
   uWS::Hub h;
 
 
+  /* Resize the grid to the desired size and fill */
+  grid.resize(GRID_ROWS);
+  for (int i = 0; i < GRID_ROWS; ++i)
+  {
+      grid[i].resize(GRID_COLS);
+      fill(grid[i].begin(), grid[i].end(), '#');
+  }
+
+  printGrid();
 
   // Waypoint map to read from
   string map_file_ = "../data/highway_map.csv";
@@ -271,13 +315,14 @@ int main() {
   	map_waypoints_dy.push_back(d_y);
   }
 
-  h.onMessage([&map_waypoints_x,&map_waypoints_y,&map_waypoints_s,&map_waypoints_dx,&map_waypoints_dy](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
+  h.onMessage([&grid,&map_waypoints_x,&map_waypoints_y,&map_waypoints_s,&map_waypoints_dx,&map_waypoints_dy](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
                      uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
     // The 2 signifies a websocket event
     //auto sdata = string(data).substr(0, length);
     //cout << sdata << endl;
+
     if (length && length > 2 && data[0] == '4' && data[1] == '2') {
 
       auto s = hasData(data);
@@ -337,6 +382,29 @@ int main() {
           /* _3__xxx__4_   */
           /* ___________   */
           /* ___________   */
+          /*
+           * Create a grid around the vehicle and place the different cars (if any)
+           * in this grid in a disctrete way. The grid size should be parametrizable
+           * and the threshold for a car to be in certain area also should be modifiable
+           *
+           * ###
+           * ###   <- All the places in the grid are empty (no cars besides our own
+           * ###
+           * ###
+           * #X#
+           * ###
+           * ###
+           *
+           * ###
+           * #.#   <- A point in the grid indicates a car.
+           * ###
+           * ###
+           * #X#
+           * ###
+           * ##.
+           *
+           */
+
           vector<double > collide_nwse = {0,0,0,0,0};
           for (int k = 0; k < sensor_fusion.size(); ++k) {
             /* sensor fusion is an array of values [ id, x, y, vx, vy, s, d]. */
@@ -346,10 +414,23 @@ int main() {
             double vehicle_s = sensor_fusion[k][5];
             double vx = sensor_fusion[k][3];
             double vy = sensor_fusion[k][4];
+
+            unsigned int col = 0;
+            unsigned int row = 0;
+
+            col = int(vehicle_d / LANE_WIDTH);
+            row = FRONT_GRID - int((car_s - vehicle_s)/LANE_WIDTH);
+            if((row < GRID_ROWS) && (col < GRID_COLS))
+            {
+              set_vechile(row, col);
+              //cout << "row: " << row << " col: " << col << endl;
+            }
+//            cout << "id: " << sensor_fusion[k][0] << " d: " << vehicle_d << " s: " << vehicle_s << endl;
+
             /* adding the change in position due to speed */
             vehicle_s += 0.02 * current_path_size * sqrt(vx*vx + vy*vy);
             double delta_s = vehicle_s - car_s;
-            int v_lane;
+            float v_lane;
             if((0.0 < vehicle_d) && (3.5 > vehicle_d))
             {
               v_lane = LANE_0;
@@ -360,7 +441,7 @@ int main() {
             }
             else
             {
-              /* supposing that the car is in the highwat always */
+              /* supposing that the car is in the highway always */
               v_lane = LANE_2;
             }
             /* check if the other vehicle is in the same lane */
@@ -409,6 +490,8 @@ int main() {
           }
           /* Get possible collisions */
 
+          printGrid();
+          fillGrid();
           double pos_prev_x, pos_prev_y;
           vector<double> X, Y;
           cout << "\n-last path size=" << current_path_size << endl;
@@ -526,7 +609,7 @@ int main() {
 							next_x_vals.push_back(x);
 							next_y_vals.push_back(y);
             }
-						cout << "car_d:" << car_d << endl;
+						cout << "car_d:" << car_d << " car_s: " << car_s << endl;
           	msgJson["next_x"] = next_x_vals;
           	msgJson["next_y"] = next_y_vals;
 
