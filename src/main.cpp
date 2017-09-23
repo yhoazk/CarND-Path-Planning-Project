@@ -171,8 +171,8 @@ vector<double> getXY(double s, double d, vector<double> maps_s, vector<double> m
 #define MAX_SPEED    (45.0f)
 /* Grid parameters */
 #define GRID_COLS (3)
-#define FRONT_GRID (10)
-#define REAR_GRID (5)
+#define FRONT_GRID (5)
+#define REAR_GRID (10)
 #define GRID_ROWS (FRONT_GRID + REAR_GRID ) /* Number of lane lines */
 
 #define LANE_WIDTH (4.0f)
@@ -223,7 +223,7 @@ double calculateAcceleration(double current, double target)
   static double differen_term = 0;
   static double last_err = 0;
 
-  static double P=0.015,I=0.00003,D=0.0019;
+  static double P=0.018,I=0.00003,D=0.0019;
 
   double increment;
   double err = target - current;
@@ -418,14 +418,14 @@ int main() {
             unsigned int col = 0;
             unsigned int row = 0;
 
-            col = int(vehicle_d / LANE_WIDTH);
+            col = (GRID_COLS-1) - int(vehicle_d / LANE_WIDTH);
             row = FRONT_GRID - int((car_s - vehicle_s)/LANE_WIDTH);
             if((row < GRID_ROWS) && (col < GRID_COLS))
             {
               set_vechile(row, col);
-              //cout << "row: " << row << " col: " << col << endl;
+              cout << "row: " << row << " col: " << col  << " id: " << sensor_fusion[k][0] << endl;
             }
-//            cout << "id: " << sensor_fusion[k][0] << " d: " << vehicle_d << " s: " << vehicle_s << endl;
+            cout << "id: " << sensor_fusion[k][0] << " d: " << vehicle_d << " s: " << vehicle_s << endl;
 
             /* adding the change in position due to speed */
             vehicle_s += 0.02 * current_path_size * sqrt(vx*vx + vy*vy);
@@ -500,7 +500,7 @@ int main() {
           current_speed += calculateAcceleration(car_speed, current_tgt_speed);
           if(collide_nwse[0] !=0)
           {
-            current_tgt_speed = 10.0 + 20.0*(collide_nwse[0]/MIN_CAR_DIST);
+            current_tgt_speed = 10.0 + 15.0*(collide_nwse[0]/MIN_CAR_DIST);
             cout << "POSSIBLE FRONT COLLISION " << collide_nwse[0] << " New Tgt speed: " << current_tgt_speed << endl;
 
           }
