@@ -9,7 +9,7 @@
 #include "Eigen-3.3/Eigen/QR"
 #include "json.hpp"
 #include "spline.h"
-
+#include "path_finder.h"
 
 using namespace std;
 
@@ -170,10 +170,7 @@ vector<double> getXY(double s, double d, vector<double> maps_s, vector<double> m
 #define MIN_CAR_DIST (50.0f)
 #define MAX_SPEED    (45.0f)
 /* Grid parameters */
-#define GRID_COLS (3)
-#define FRONT_GRID (5)
-#define REAR_GRID (10)
-#define GRID_ROWS (FRONT_GRID + REAR_GRID ) /* Number of lane lines */
+
 
 #define LANE_WIDTH (4.0f)
 /* there will be 5 rows behind and 9 in front */
