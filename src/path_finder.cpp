@@ -16,6 +16,7 @@ path_finder::node* path_finder::node::get_child(enum lane_id lane)
   return this->child_expand[lane];
 }
 
+
 void path_finder::node::set_parent(enum lane_id lane, node* n)
 {
   this->parent_expand[lane] = n;
@@ -55,28 +56,17 @@ path_finder::node* path_finder::check_parent(path_finder::node* n, std::vector<c
       sol.push_back(decoder[k]);
       result = n->parent_expand[k];
       result->val = decoder[k];
-      ++refs;
       break;
     }
   }
 
-  if(refs > 1)
-  {
-    std::cout << "TWO or more references found" << std::endl;
-
-  }
-  else
-  {
-
-  }
   //print_grid(node_map);
   return result;
 }
 
 
 
-
-std::vector<char> path_finder::find_path(node* root)
+std::vector<char> path_finder::_find_path(node* root)
 {
   found = false;
   finished = false;
@@ -105,8 +95,6 @@ std::vector<char> path_finder::find_path(node* root)
     for(size_t i =0; i < current_node->x; ++i)
       std::cout <<  "   ";
     /* check possible paths in which the node can move */
-
-// the node being appended so it can be registered??
 
     /**/
     if(rigthmost_lane == current_node->x)
@@ -147,6 +135,9 @@ std::vector<char> path_finder::find_path(node* root)
         std::cout << "ENDD"<< std::endl;
       }
       /* Fill the child info */
+      if('.' == next_node->val)
+      {
+      }
       if('#' == next_node->val)
       {
         // std::cout << "next_node x: " << next_node->x << "  y: " << next_node->y << '\n';
@@ -191,4 +182,62 @@ std::vector<char> path_finder::find_path(node* root)
     return path;
   }
 
+}
+
+
+std::vector<char> path_finder::find_path(void){
+  return _find_path(&node_map[me_y][me_x]);
+}
+
+void path_finder::clean_grid(void)
+{
+  for (int i = 0; i < GRID_ROWS; ++i) {
+    for (int j = 0; j < GRID_COLS; ++j) {
+//      node_map[i][j].val = '#';      node_map[i][j].expanded = false;
+      (&node_map[i][j])->~node();
+      new(&node_map[i][j]) node();
+    }
+  }
+}
+void path_finder::show_grid(void)
+{
+  std::cout << "   0 1 2\n";
+  for (int i = 0; i < GRID_ROWS; ++i) {
+    std::cout.width(2);
+    std::cout << i << '|' << ' ';
+    for (int j = 0; j < GRID_COLS; ++j) {
+      std::cout << node_map[i][j].val <<' ';
+    }
+    std::cout << std::endl;
+  }
+
+}
+
+void path_finder::set_vehicle(int x, int y)
+{
+  if(x < GRID_COLS && y < GRID_ROWS)
+  {
+    node_map[y][x].val = '.';
+    node_map[y][x].x = x;
+    node_map[y][x].y = y;
+  }
+}
+void path_finder::set_me(int x, int y)
+{
+  if(x < GRID_COLS && y < GRID_ROWS)
+  {
+    me_x = x;
+    me_y = y;
+    node_map[y][x].val = 'O';
+    node_map[y][x].x = x;
+    node_map[y][x].y = y;
+  }
+}
+
+void path_finder::set_goal(int x, int y)
+{
+  if(x < GRID_COLS && y < GRID_ROWS)
+  {
+    node_map[y][x].val = 'G';
+  }
 }

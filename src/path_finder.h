@@ -10,8 +10,8 @@
 #include <queue>
 
 #define GRID_COLS (3)
-#define FRONT_GRID (5)
-#define REAR_GRID (10)
+#define FRONT_GRID (2)
+#define REAR_GRID (13)
 #define GRID_ROWS (FRONT_GRID + REAR_GRID ) /* Number of lane lines */
 
 enum lane_id
@@ -26,8 +26,6 @@ class path_finder
   class node
   {
   public:
-    // bool visited; not needed as it a tree
-    // node* last; this will be implemented in the parent
     std::vector<node *> child_expand;
     std::vector<node *> parent_expand;
     int x;
@@ -53,17 +51,30 @@ class path_finder
 
   void set_val(std::vector<std::vector<node>>& v, size_t x, size_t y, char c);
   node* check_parent(node* n, std::vector<char>& sol);
+  std::vector<char> _find_path(node* root);
   bool found;
   bool finished;
+  int me_x;
+  int me_y;
   std::vector<std::vector<node>> node_map;
 public:
-
-  path_finder(std::vector<std::vector<node>> m): found(false), finished(false), node_map(m)
+  void set_vehicle(int x, int y);
+  void set_me(int x, int y);
+  void set_goal(int x, int y);
+  path_finder(): found(false), finished(false), me_x(0),me_y(0)
   {
-
+    /*Create the grid*/
+    node_map.resize(GRID_ROWS);
+    for (int i = 0; i < GRID_ROWS; ++i) {
+        node_map[i].resize(GRID_COLS);
+    }
+    std::cout << "Map size: " << node_map.size() << "x" << node_map[0].size() << std::endl;
   }
+
+  void clean_grid(void);
+  void show_grid(void);
   std::vector<char> solution;
-  std::vector<char> find_path(node* root);
+  std::vector<char> find_path();
 };
 
 

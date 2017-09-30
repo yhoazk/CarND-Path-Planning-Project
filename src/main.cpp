@@ -174,7 +174,7 @@ vector<double> getXY(double s, double d, vector<double> maps_s, vector<double> m
 
 #define LANE_WIDTH (4.0f)
 /* there will be 5 rows behind and 9 in front */
-#define set_vechile(x,y) (grid[x][y] = '.')
+//#define set_vechile(x,y) (grid[x][y] = '.')
 
 
 
@@ -192,27 +192,6 @@ vector<double> map_waypoints_s;
 vector<double> map_waypoints_dx;
 vector<double> map_waypoints_dy;
 
-vector<vector<char>> grid;
-
-void printGrid(void)
-{
-  for (int i = 0; i < GRID_ROWS; ++i) {
-    for (int j = 0; j < GRID_COLS; ++j) {
-      cout << grid[i][j];
-    }
-    cout << endl;
-  }
-}
-
-
-void fillGrid(void)
-{
-  for (int i = 0; i < GRID_ROWS; ++i)
-  {
-    grid[i].resize(GRID_COLS);
-    fill(grid[i].begin(), grid[i].end(), '#');
-  }
-}
 
 double calculateAcceleration(double current, double target)
 {
@@ -274,16 +253,8 @@ tk::spline getNextPoints(double current_s, double current_d, double ref_yaw)
 int main() {
   uWS::Hub h;
 
-
+  path_finder* fp = new path_finder();
   /* Resize the grid to the desired size and fill */
-  grid.resize(GRID_ROWS);
-  for (int i = 0; i < GRID_ROWS; ++i)
-  {
-      grid[i].resize(GRID_COLS);
-      fill(grid[i].begin(), grid[i].end(), '#');
-  }
-
-  printGrid();
 
   // Waypoint map to read from
   string map_file_ = "../data/highway_map.csv";
@@ -312,7 +283,7 @@ int main() {
   	map_waypoints_dy.push_back(d_y);
   }
 
-  h.onMessage([&grid,&map_waypoints_x,&map_waypoints_y,&map_waypoints_s,&map_waypoints_dx,&map_waypoints_dy](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
+  h.onMessage([&fp, &map_waypoints_x,&map_waypoints_y,&map_waypoints_s,&map_waypoints_dx,&map_waypoints_dy](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
                      uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
@@ -354,6 +325,10 @@ int main() {
 
           vector<double> next_x_vals;
           vector<double> next_y_vals;
+
+          cout << "SET ME" << endl;
+          fp->set_me((GRID_COLS-1)- int(car_d / LANE_WIDTH), FRONT_GRID);
+
 
           double pos_x, pos_y, yaw;
           // TODO: define a path made up of (x,y) points that the car will visit sequentially every .02 seconds
@@ -403,7 +378,8 @@ int main() {
            */
 
           vector<double > collide_nwse = {0,0,0,0,0};
-          for (int k = 0; k < sensor_fusion.size(); ++k) {
+          for (int k = 0; k < sensor_fusion.size(); ++k)
+          {
             /* sensor fusion is an array of values [ id, x, y, vx, vy, s, d]. */
 
             /*For each car */
@@ -419,8 +395,8 @@ int main() {
             row = FRONT_GRID - int((car_s - vehicle_s)/LANE_WIDTH);
             if((row < GRID_ROWS) && (col < GRID_COLS))
             {
-              set_vechile(row, col);
               cout << "row: " << row << " col: " << col  << " id: " << sensor_fusion[k][0] << endl;
+              fp->set_vehicle(col, row);
             }
             cout << "id: " << sensor_fusion[k][0] << " d: " << vehicle_d << " s: " << vehicle_s << endl;
 
@@ -485,17 +461,25 @@ int main() {
               }
             }
           }
-          /* Get possible collisions */
 
-          printGrid();
-          fillGrid();
+
+          /* Get possible collisions */
+          fp->set_goal((GRID_COLS-1)- int(car_d / LANE_WIDTH), 13);
+          fp->set_goal((GRID_COLS-1)- int(car_d / LANE_WIDTH), 14);
+          fp->show_grid();
+          auto path = fp->find_path();
+          fp->show_grid();
+          fp->clean_grid();
+
+
+
           double pos_prev_x, pos_prev_y;
           vector<double> X, Y;
           cout << "\n-last path size=" << current_path_size << endl;
           cout << "Car x:" << car_x << " Car y: " << car_y << endl << "Pushing old vals: ";
 
           current_speed += calculateAcceleration(car_speed, current_tgt_speed);
-          if(collide_nwse[0] !=0)
+          if(collide_nwse[0] !=0 && path.size() == 0)
           {
             current_tgt_speed = 10.0 + 15.0*(collide_nwse[0]/MIN_CAR_DIST);
             cout << "POSSIBLE FRONT COLLISION " << collide_nwse[0] << " New Tgt speed: " << current_tgt_speed << endl;
