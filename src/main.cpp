@@ -464,8 +464,10 @@ int main() {
 
 
           /* Get possible collisions */
-          fp->set_goal((GRID_COLS-1)- int(car_d / LANE_WIDTH), 13);
-          fp->set_goal((GRID_COLS-1)- int(car_d / LANE_WIDTH), 14);
+          //fp->set_goal((GRID_COLS-1)- int(car_d / LANE_WIDTH), 13);
+          fp->set_goal(0, 13);
+          fp->set_goal(0, 14);
+          //fp->set_goal((GRID_COLS-1)- int(car_d / LANE_WIDTH), 14);
           fp->show_grid();
           auto path = fp->find_path();
           fp->show_grid();
@@ -477,6 +479,26 @@ int main() {
           vector<double> X, Y;
           cout << "\n-last path size=" << current_path_size << endl;
           cout << "Car x:" << car_x << " Car y: " << car_y << endl << "Pushing old vals: ";
+
+          if(path.size() > 0)
+          {
+            reverse(path.begin(), path.end());
+
+            switch (path[0])
+            {
+              case '|':
+//                current_lane = current_lane;
+                break;
+              case '\\':
+                if(current_lane > LANE_0)
+                  current_lane = current_lane - 4.0;
+                break;
+              case '/':
+                if(current_lane < LANE_2)
+                  current_lane = current_lane + 4.0;
+                break;
+            }
+          }
 
           current_speed += calculateAcceleration(car_speed, current_tgt_speed);
           if(collide_nwse[0] !=0 && path.size() == 0)
