@@ -167,7 +167,7 @@ vector<double> getXY(double s, double d, vector<double> maps_s, vector<double> m
 #define LANE_1 (6.0f)
 #define LANE_2 (10.0f)
 #define CTRL_VECTOR_SIZE (60) // Size of the vector holding the planned points
-#define MIN_CAR_DIST (20.0f)
+#define MIN_CAR_DIST (40.0f)
 #define MAX_SPEED    (46.0f)
 /* Grid parameters */
 
@@ -255,7 +255,8 @@ int main() {
 
   path_finder* fp = new path_finder();
   unsigned int roll_count = 0;
-  unsigned int period = 5; // process every 10 messages
+  unsigned int period = 20; // process every 10 messages
+  bool maneuver_done = true;
   /* Resize the grid to the desired size and fill */
 
   // Waypoint map to read from
@@ -285,7 +286,7 @@ int main() {
   	map_waypoints_dy.push_back(d_y);
   }
 
-  h.onMessage([&roll_count, &period, &fp, &map_waypoints_x,&map_waypoints_y,&map_waypoints_s,&map_waypoints_dx,&map_waypoints_dy](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
+  h.onMessage([&maneuver_done,  &roll_count, &period, &fp, &map_waypoints_x,&map_waypoints_y,&map_waypoints_s,&map_waypoints_dx,&map_waypoints_dy](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
                      uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
@@ -330,13 +331,8 @@ int main() {
           vector<double> next_y_vals;
 
 
-          bool maneuver_done = false;
           roll_count++;
           bool exists_path = false;
-          if((roll_count%period) == 0)
-          {
-            maneuver_done = true;
-          }
 
           fp->set_me((GRID_COLS-1)- int(car_d / LANE_WIDTH), FRONT_GRID);
 
@@ -401,12 +397,10 @@ int main() {
 
             unsigned int col = 0;
             unsigned int row = 0;
-            /* adding the change in position due to speed */
-            vehicle_s += 0.02 * current_path_size * sqrt(vx*vx + vy*vy);
 
             col = (GRID_COLS-1) - int(vehicle_d / LANE_WIDTH);
             //row = FRONT_GRID - int((car_s - vehicle_s)/LANE_WIDTH);
-            row = FRONT_GRID - int((car_s - vehicle_s)/LANE_WIDTH+2.0);
+            row = FRONT_GRID - int((car_s - vehicle_s)/(LANE_WIDTH));
             if((row < GRID_ROWS) && (col < GRID_COLS))
             {
 //              cout << "row: " << row << " col: " << col  << " id: " << sensor_fusion[k][0] << endl;
@@ -414,6 +408,8 @@ int main() {
             }
 //            cout << "id: " << sensor_fusion[k][0] << " d: " << vehicle_d << " s: " << vehicle_s << endl;
 
+            /* adding the change in position due to speed, and substract my speed */
+            vehicle_s += 0.02 * current_path_size * sqrt(vx*vx + vy*vy);
             double delta_s = vehicle_s - car_s;
             float v_lane;
             if((0.0 < vehicle_d) && (3.5 > vehicle_d))
@@ -477,8 +473,9 @@ int main() {
 
           /* Get possible collisions */
           //fp->set_goal((GRID_COLS-1)- int(car_d / LANE_WIDTH), 13);
-          fp->set_goal(0, 13);
           fp->set_goal(0, 14);
+          fp->set_goal(1, 14);
+          fp->set_goal(2, 14);
           //fp->set_goal((GRID_COLS-1)- int(car_d / LANE_WIDTH), 14);
           fp->show_grid();
           auto path = fp->find_path();
@@ -493,50 +490,73 @@ int main() {
 //          cout << "\n-last path size=" << current_path_size << endl;
 //          cout << "Car x:" << car_x << " Car y: " << car_y << endl << "Pushing old vals: ";
 
-          if(path.size() > 0 && maneuver_done)
+
+
+
+          if(!path.empty() && maneuver_done)
           {
             reverse(path.begin(), path.end());
-            maneuver_done = false; // reset the counter
             cout << "MANEUUUVERRR ----------------" << endl;
             switch (path[0])
             {
               case '|':
-                  current_tgt_speed = MAX_SPEED;
-//                current_lane = current_lane;
+                current_tgt_speed = MAX_SPEED;
+                next_lane = current_lane;
+                maneuver_done = true;
                 break;
               case '\\':
-                if(fp->is_cell_free((GRID_COLS-1)- int(car_d / LANE_WIDTH), current_lane+4.0))
+                if(fp->is_cell_free((GRID_COLS-1)- int(car_d / LANE_WIDTH), current_lane-4.0)) // there is not a car at the side
                 {
-
                   if(current_lane > LANE_0)
                   {
-                    current_lane = current_lane - 1.0;
-                    current_tgt_speed = 35.0;
+                    current_lane = current_lane - LANE_WIDTH;
+                    cout << "Change to lane: " << current_lane << endl;
+                    next_lane = current_lane - LANE_WIDTH;
+                    current_tgt_speed = 40.0;
+                    maneuver_done = false;
                   }
                 } else{
+                  cout << "NO PATH: " << current_lane << endl;
                   exists_path = false;
                 }
                 break;
               case '/':
                 if(fp->is_cell_free((GRID_COLS-1)- int(car_d / LANE_WIDTH), current_lane+4.0)) {
                   if (current_lane < LANE_2) {
-                    current_lane = current_lane + 1.0;
-                    current_tgt_speed = 35.0;
+                    next_lane = current_lane + LANE_WIDTH;
+                    current_lane = current_lane + LANE_WIDTH;
+                    cout << "Change to lane: " << current_lane << endl;
+                    current_tgt_speed = 40.0;
+                    maneuver_done = false;
                   }
                 } else{
+                  cout << "xxNO PATH: " << current_lane << endl;
                   exists_path = false;
                 }
                 break;
             }
           }
+          cout << "maneuver done:" << maneuver_done << " car_d-current_lane" << car_d-current_lane << endl;
+          /*Keep inside a lane */
+          if((fabs(car_d-current_lane) < 0.5f) && ((roll_count%period) == 0) )
+          {
+            maneuver_done = true;
+            // The error in the lane is bigger than the max
+            //if next_lane > current_lane the substraction is positive, nega
+        //    current_lane += (next_lane-current_lane)*0.3;
+            cout << "NextLane "  << next_lane<<  endl;
+          }
 
           current_speed += calculateAcceleration(car_speed, current_tgt_speed);
-          //if((collide_nwse[0] != 0) && (!exists_path))
           if((collide_nwse[0] != 0))
+//          if((collide_nwse[0] != 0))
           {
-            current_tgt_speed = 10.0 + 8.0*(collide_nwse[0]/MIN_CAR_DIST);
-            cout << "POSSIBLE FRONT COLLISION " << collide_nwse[0] << "\nNew Tgt speed: " << current_tgt_speed << endl;
 
+            if(!exists_path || (MIN_CAR_DIST/2 > collide_nwse[0])){
+              current_tgt_speed = 10.0 + 8.0*(collide_nwse[0]/MIN_CAR_DIST);
+              cout << "BREAKING!!!!" << endl;
+            }
+            cout << "POSSIBLE FRONT COLLISION " << collide_nwse[0] << "\nNew Tgt speed: " << current_tgt_speed << endl;
           }
           else{
             current_tgt_speed = MAX_SPEED;

@@ -79,8 +79,8 @@ std::vector<char> path_finder::_find_path(node* root)
   size_t g_x,g_y; // goal coordinates in the map
   static std::vector<char> path;
   std::vector<int> possible_movs;
-
-  while (node_queue.empty() != true && found == false)
+  path.clear();
+  while (node_queue.empty() != true && found == false && finished != true)
   {
     next_node = nullptr;
     possible_movs = {center_lane, leftmost_lane,  rigthmost_lane};
@@ -125,10 +125,25 @@ std::vector<char> path_finder::_find_path(node* root)
         default:
           inc_x = 0;
       }
-
+      /* Check that the next node is in limits */
       next_node = &node_map[ (current_node->y)+1 ][ (current_node->x)+inc_x ];
-      next_node->x = (current_node->x)+inc_x;
-      next_node->y = (current_node->y)+1;
+      if(current_node->x < GRID_COLS && current_node->y < GRID_ROWS) {
+        next_node->x = (current_node->x)+inc_x;
+        next_node->y = (current_node->y)+1;
+      } else {
+        finished = true; //reached the end and not able to find the goal, keep the same movement
+        continue;
+      }
+
+
+      /*check that we are not passing in a corner */
+      /* The nodes at the the side of the turn must be empty  */
+      if(next_node->x < GRID_COLS && next_node->y < GRID_ROWS){
+        if(node_map[ (current_node->y) ][ (current_node->x)+inc_x ].val == '.')
+        {
+          continue;
+        }
+      }
 
       if(next_node->y > 13)
       {
@@ -168,7 +183,7 @@ std::vector<char> path_finder::_find_path(node* root)
 
     }
     current_node->expanded = true;
-    std::cout << std::endl;
+//    std::cout << std::endl;
   }
 
   if(!found)
@@ -179,7 +194,25 @@ std::vector<char> path_finder::_find_path(node* root)
   }
   else
   {
-    return path;
+    /* Check if the path is overly complex ie there's a lot of traffic*/
+    int k = 0;
+    for (auto m: path)
+    {
+      std::cout << m;
+      if(m != '|')
+      {
+        ++k;
+      }
+    }
+    std::cout << std::endl;
+    if(k > 4)
+    {
+      return {};
+    }
+    else
+    {
+      return path;
+    }
   }
 
 }
@@ -245,12 +278,18 @@ void path_finder::set_goal(int x, int y)
 bool path_finder::is_cell_free(int x, int y)
 {
   bool state = false;
+  if(x < 0 || x> 2 || y < 0){
+    /*Outer lanes*/
+   state = true;
+  }
+  else{
 
-  if(x < GRID_COLS && y < GRID_ROWS)
-  {
-    if(node_map[y][x].val == '#')
+    if(x < GRID_COLS && y < GRID_ROWS)
     {
-      state = true;
+      if(node_map[y][x].val == '#')
+      {
+        state = true;
+      }
     }
   }
   return state;
