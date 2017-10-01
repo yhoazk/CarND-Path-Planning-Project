@@ -255,7 +255,7 @@ int main() {
 
   path_finder* fp = new path_finder();
   unsigned int roll_count = 0;
-  unsigned int period = 20; // process every 10 messages
+  unsigned int period = 3; // process every 10 messages
   bool maneuver_done = true;
   /* Resize the grid to the desired size and fill */
 
@@ -341,48 +341,8 @@ int main() {
           // TODO: define a path made up of (x,y) points that the car will visit sequentially every .02 seconds
 
           int current_path_size  = previous_path_x.size();
-          #if 0
-            Para poder tener una aceleracion suave la separacion entre puntos debe ser pequeña.
-            por lo que el incremento de en la distancia debe poder calcularse respecto al error
-            entre la velocidad objetivo y la velocidad actual.
-
-
-            Para que las transiciones entre los waypoints sean suaves hay que crear un spline entre ellos.
-
-            interpretar como es que llega la informacion de la telemetria para despues analizarla
-            - Descomponer por lineas
-
-          #endif
 
           /* Get possible collisions */
-          /* This vector represents the location of cars which are close to  */
-          /* _1___0___2_   */
-          /* ___________   */
-          /* _3__xxx__4_   */
-          /* ___________   */
-          /* ___________   */
-          /*
-           * Create a grid around the vehicle and place the different cars (if any)
-           * in this grid in a disctrete way. The grid size should be parametrizable
-           * and the threshold for a car to be in certain area also should be modifiable
-           *
-           * ###
-           * ###   <- All the places in the grid are empty (no cars besides our own
-           * ###
-           * ###
-           * #X#
-           * ###
-           * ###
-           *
-           * ###
-           * #.#   <- A point in the grid indicates a car.
-           * ###
-           * ###
-           * #X#
-           * ###
-           * ##.
-           *
-           */
 
           vector<double > collide_nwse = {0,0,0,0,0};
           for (int k = 0; k < sensor_fusion.size(); ++k)
@@ -403,71 +363,24 @@ int main() {
             row = FRONT_GRID - int((car_s - vehicle_s)/(LANE_WIDTH));
             if((row < GRID_ROWS) && (col < GRID_COLS))
             {
-//              cout << "row: " << row << " col: " << col  << " id: " << sensor_fusion[k][0] << endl;
               fp->set_vehicle(col, row);
             }
-//            cout << "id: " << sensor_fusion[k][0] << " d: " << vehicle_d << " s: " << vehicle_s << endl;
 
             /* adding the change in position due to speed, and substract my speed */
             vehicle_s += 0.02 * current_path_size * sqrt(vx*vx + vy*vy);
             double delta_s = vehicle_s - car_s;
+            double delta_d = fabs(vehicle_d- car_d); // difference in lane
             float v_lane;
-            if((0.0 < vehicle_d) && (3.5 > vehicle_d))
-            {
-              v_lane = LANE_0;
-            }
-            else if((3.5 <= vehicle_d) && (7.5 > vehicle_d))
-            {
-              v_lane = LANE_1;
-            }
-            else
-            {
-              /* supposing that the car is in the highway always */
-              v_lane = LANE_2;
-            }
-            /* check if the other vehicle is in the same lane */
-            if(fabs(v_lane - current_lane) < 0.1)
-            {
-              /* The vehicle and this car are in the same lane */
-              if(delta_s > 0.0)
-              {
-                /*the car is in front of us?*/
-                if(delta_s < MIN_CAR_DIST+10.0){
-                  if(collide_nwse[0] < 0.5)
-                  {
-                    collide_nwse[0] = delta_s; // possible front collision
-                  } else{
-                    collide_nwse[0] = min(delta_s, collide_nwse[0]);
-                  }
-                  cout << "\nDelta: " << delta_s << endl; // la magnitud de delta debe ser inversamente proporcional al frenado
-                } else{
-                  collide_nwse[0] = 0;
-                }
-              }
-              else
-              {
 
+            if( (delta_s > 0 ) && delta_s < MIN_CAR_DIST)
+            {
+              /*The car is close*/
+              if (delta_d < 2.0){
+                collide_nwse[0] = delta_s;
               }
 
-            } else{ /* the vehicle is not in the same lane */
-              /* is the vehicle behind us? */
-              if(delta_s > MIN_CAR_DIST/2)
-              {
-                /* vehicle in front */
-                if(fabs(car_s - vehicle_s) < MIN_CAR_DIST)
-                {
-
-                } else{
-                  /*the vehicle is not close enough, ignore */
-                }
-              }
-              else if(delta_s < MIN_CAR_DIST/2)
-              {
-                /* vehicle at our size */
-              } else{
-                /* vehicle behind us */
-              }
             }
+
           }
 
 
@@ -487,18 +400,13 @@ int main() {
 
           double pos_prev_x, pos_prev_y;
           vector<double> X, Y;
-//          cout << "\n-last path size=" << current_path_size << endl;
-//          cout << "Car x:" << car_x << " Car y: " << car_y << endl << "Pushing old vals: ";
-
-
-
-
           if(!path.empty() && maneuver_done)
           {
             reverse(path.begin(), path.end());
             cout << "MANEUUUVERRR ----------------" << endl;
             switch (path[0])
             {
+              default:
               case '|':
                 current_tgt_speed = MAX_SPEED;
                 next_lane = current_lane;
@@ -509,10 +417,10 @@ int main() {
                 {
                   if(current_lane > LANE_0)
                   {
-                    current_lane = current_lane - LANE_WIDTH;
+//                    current_lane = current_lane - LANE_WIDTH/2.0;
                     cout << "Change to lane: " << current_lane << endl;
                     next_lane = current_lane - LANE_WIDTH;
-                    current_tgt_speed = 40.0;
+//                    current_tgt_speed = 35.0;
                     maneuver_done = false;
                   }
                 } else{
@@ -524,9 +432,9 @@ int main() {
                 if(fp->is_cell_free((GRID_COLS-1)- int(car_d / LANE_WIDTH), current_lane+4.0)) {
                   if (current_lane < LANE_2) {
                     next_lane = current_lane + LANE_WIDTH;
-                    current_lane = current_lane + LANE_WIDTH;
+//                    current_lane = current_lane + LANE_WIDTH/2.0;
                     cout << "Change to lane: " << current_lane << endl;
-                    current_tgt_speed = 40.0;
+//                    current_tgt_speed = 35.0;
                     maneuver_done = false;
                   }
                 } else{
@@ -538,22 +446,27 @@ int main() {
           }
           cout << "maneuver done:" << maneuver_done << " car_d-current_lane" << car_d-current_lane << endl;
           /*Keep inside a lane */
-          if((fabs(car_d-current_lane) < 0.5f) && ((roll_count%period) == 0) )
+          if((fabs(car_d-next_lane) < 0.5f) /*&& ((roll_count%period) == 0)*/ )
           {
             maneuver_done = true;
-            // The error in the lane is bigger than the max
-            //if next_lane > current_lane the substraction is positive, nega
-        //    current_lane += (next_lane-current_lane)*0.3;
+//            current_lane += (next_lane-current_lane)*0.3;
             cout << "NextLane "  << next_lane<<  endl;
+          } else{
+            current_lane += (next_lane-current_lane)*0.1;
           }
 
           current_speed += calculateAcceleration(car_speed, current_tgt_speed);
           if((collide_nwse[0] != 0))
-//          if((collide_nwse[0] != 0))
           {
 
-            if(!exists_path || (MIN_CAR_DIST/2 > collide_nwse[0])){
-              current_tgt_speed = 10.0 + 8.0*(collide_nwse[0]/MIN_CAR_DIST);
+            if(!exists_path || (0.0 < collide_nwse[0]) && ((7.0)> collide_nwse[0])){
+
+              current_tgt_speed = 10.0 + 11.0*(collide_nwse[0]/MIN_CAR_DIST);
+
+              if(current_tgt_speed < 10)
+              {
+                current_tgt_speed = 10.0;
+              }
               cout << "BREAKING!!!!" << endl;
             }
             cout << "POSSIBLE FRONT COLLISION " << collide_nwse[0] << "\nNew Tgt speed: " << current_tgt_speed << endl;

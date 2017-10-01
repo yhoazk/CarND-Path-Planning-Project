@@ -205,7 +205,7 @@ std::vector<char> path_finder::_find_path(node* root)
       }
     }
     std::cout << std::endl;
-    if(k > 4)
+    if(k > 5)
     {
       return {};
     }
