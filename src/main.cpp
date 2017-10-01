@@ -254,6 +254,8 @@ int main() {
   uWS::Hub h;
 
   path_finder* fp = new path_finder();
+  unsigned int roll_count = 0;
+  unsigned int period = 10; // process every 10 messages
   /* Resize the grid to the desired size and fill */
 
   // Waypoint map to read from
@@ -283,13 +285,14 @@ int main() {
   	map_waypoints_dy.push_back(d_y);
   }
 
-  h.onMessage([&fp, &map_waypoints_x,&map_waypoints_y,&map_waypoints_s,&map_waypoints_dx,&map_waypoints_dy](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
+  h.onMessage([&roll_count, &period, &fp, &map_waypoints_x,&map_waypoints_y,&map_waypoints_s,&map_waypoints_dx,&map_waypoints_dy](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
                      uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
     // The 2 signifies a websocket event
     //auto sdata = string(data).substr(0, length);
     //cout << sdata << endl;
+
 
     if (length && length > 2 && data[0] == '4' && data[1] == '2') {
 
@@ -325,6 +328,15 @@ int main() {
 
           vector<double> next_x_vals;
           vector<double> next_y_vals;
+
+
+          bool maneuver_done = false;
+          roll_count++;
+
+          if((roll_count%period) == 0)
+          {
+            maneuver_done = true;
+          }
 
           cout << "SET ME" << endl;
           fp->set_me((GRID_COLS-1)- int(car_d / LANE_WIDTH), FRONT_GRID);
@@ -480,10 +492,10 @@ int main() {
           cout << "\n-last path size=" << current_path_size << endl;
           cout << "Car x:" << car_x << " Car y: " << car_y << endl << "Pushing old vals: ";
 
-          if(path.size() > 0)
+          if(path.size() > 0 && maneuver_done)
           {
             reverse(path.begin(), path.end());
-
+            maneuver_done = false; // reset the counter 
             switch (path[0])
             {
               case '|':
@@ -501,7 +513,7 @@ int main() {
           }
 
           current_speed += calculateAcceleration(car_speed, current_tgt_speed);
-          if(collide_nwse[0] !=0 && path.size() == 0)
+          if((collide_nwse[0] != 0) && (path.size() == 0))
           {
             current_tgt_speed = 10.0 + 15.0*(collide_nwse[0]/MIN_CAR_DIST);
             cout << "POSSIBLE FRONT COLLISION " << collide_nwse[0] << " New Tgt speed: " << current_tgt_speed << endl;
