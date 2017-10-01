@@ -52,7 +52,7 @@ path_finder::node* path_finder::check_parent(path_finder::node* n, std::vector<c
   {
     if(nullptr != n->parent_expand[k])
     {
-      std::cout << decoder[k];
+//      std::cout << decoder[k];
       sol.push_back(decoder[k]);
       result = n->parent_expand[k];
       result->val = decoder[k];
@@ -90,10 +90,10 @@ std::vector<char> path_finder::_find_path(node* root)
     {
       continue;
     }
-    std::cout << "______________________________________ Queue size: " << node_queue.size() << std::endl;
-    std::cout << "current_node x: " << current_node->x << "  y: " << current_node->y << " val: " << current_node->val << '\n';
-    for(size_t i =0; i < current_node->x; ++i)
-      std::cout <<  "   ";
+//    std::cout << "______________________________________ Queue size: " << node_queue.size() << std::endl;
+//    std::cout << "current_node x: " << current_node->x << "  y: " << current_node->y << " val: " << current_node->val << '\n';
+//    for(size_t i =0; i < current_node->x; ++i)
+//      std::cout <<  "   ";
     /* check possible paths in which the node can move */
 
     /**/
@@ -141,7 +141,7 @@ std::vector<char> path_finder::_find_path(node* root)
       if('#' == next_node->val)
       {
         // std::cout << "next_node x: " << next_node->x << "  y: " << next_node->y << '\n';
-        std::cout << decode_show[lane];
+//        std::cout << decode_show[lane];
         current_node->set_child(lane_id(lane), next_node);
         node_queue.push(next_node);
         next_node->set_parent(lane_id(lane), current_node);
@@ -149,7 +149,7 @@ std::vector<char> path_finder::_find_path(node* root)
 
       else if('G' == next_node->val)
       {
-        std::cout << decode_show[lane];
+//        std::cout << decode_show[lane];
         current_node->set_child(lane_id(lane), next_node);
         next_node->set_parent(lane_id(lane), current_node);
         std::cout << "\nFOUND";
@@ -240,4 +240,18 @@ void path_finder::set_goal(int x, int y)
   {
     node_map[y][x].val = 'G';
   }
+}
+
+bool path_finder::is_cell_free(int x, int y)
+{
+  bool state = false;
+
+  if(x < GRID_COLS && y < GRID_ROWS)
+  {
+    if(node_map[y][x].val == '#')
+    {
+      state = true;
+    }
+  }
+  return state;
 }

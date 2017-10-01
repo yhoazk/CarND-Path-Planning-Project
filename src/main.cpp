@@ -167,8 +167,8 @@ vector<double> getXY(double s, double d, vector<double> maps_s, vector<double> m
 #define LANE_1 (6.0f)
 #define LANE_2 (10.0f)
 #define CTRL_VECTOR_SIZE (60) // Size of the vector holding the planned points
-#define MIN_CAR_DIST (50.0f)
-#define MAX_SPEED    (45.0f)
+#define MIN_CAR_DIST (20.0f)
+#define MAX_SPEED    (46.0f)
 /* Grid parameters */
 
 
@@ -255,7 +255,7 @@ int main() {
 
   path_finder* fp = new path_finder();
   unsigned int roll_count = 0;
-  unsigned int period = 10; // process every 10 messages
+  unsigned int period = 5; // process every 10 messages
   /* Resize the grid to the desired size and fill */
 
   // Waypoint map to read from
@@ -332,13 +332,12 @@ int main() {
 
           bool maneuver_done = false;
           roll_count++;
-
+          bool exists_path = false;
           if((roll_count%period) == 0)
           {
             maneuver_done = true;
           }
 
-          cout << "SET ME" << endl;
           fp->set_me((GRID_COLS-1)- int(car_d / LANE_WIDTH), FRONT_GRID);
 
 
@@ -402,18 +401,19 @@ int main() {
 
             unsigned int col = 0;
             unsigned int row = 0;
-
-            col = (GRID_COLS-1) - int(vehicle_d / LANE_WIDTH);
-            row = FRONT_GRID - int((car_s - vehicle_s)/LANE_WIDTH);
-            if((row < GRID_ROWS) && (col < GRID_COLS))
-            {
-              cout << "row: " << row << " col: " << col  << " id: " << sensor_fusion[k][0] << endl;
-              fp->set_vehicle(col, row);
-            }
-            cout << "id: " << sensor_fusion[k][0] << " d: " << vehicle_d << " s: " << vehicle_s << endl;
-
             /* adding the change in position due to speed */
             vehicle_s += 0.02 * current_path_size * sqrt(vx*vx + vy*vy);
+
+            col = (GRID_COLS-1) - int(vehicle_d / LANE_WIDTH);
+            //row = FRONT_GRID - int((car_s - vehicle_s)/LANE_WIDTH);
+            row = FRONT_GRID - int((car_s - vehicle_s)/LANE_WIDTH+2.0);
+            if((row < GRID_ROWS) && (col < GRID_COLS))
+            {
+//              cout << "row: " << row << " col: " << col  << " id: " << sensor_fusion[k][0] << endl;
+              fp->set_vehicle(col, row);
+            }
+//            cout << "id: " << sensor_fusion[k][0] << " d: " << vehicle_d << " s: " << vehicle_s << endl;
+
             double delta_s = vehicle_s - car_s;
             float v_lane;
             if((0.0 < vehicle_d) && (3.5 > vehicle_d))
@@ -482,6 +482,7 @@ int main() {
           //fp->set_goal((GRID_COLS-1)- int(car_d / LANE_WIDTH), 14);
           fp->show_grid();
           auto path = fp->find_path();
+          exists_path = (path.size() != 0);
           fp->show_grid();
           fp->clean_grid();
 
@@ -489,46 +490,64 @@ int main() {
 
           double pos_prev_x, pos_prev_y;
           vector<double> X, Y;
-          cout << "\n-last path size=" << current_path_size << endl;
-          cout << "Car x:" << car_x << " Car y: " << car_y << endl << "Pushing old vals: ";
+//          cout << "\n-last path size=" << current_path_size << endl;
+//          cout << "Car x:" << car_x << " Car y: " << car_y << endl << "Pushing old vals: ";
 
           if(path.size() > 0 && maneuver_done)
           {
             reverse(path.begin(), path.end());
-            maneuver_done = false; // reset the counter 
+            maneuver_done = false; // reset the counter
+            cout << "MANEUUUVERRR ----------------" << endl;
             switch (path[0])
             {
               case '|':
+                  current_tgt_speed = MAX_SPEED;
 //                current_lane = current_lane;
                 break;
               case '\\':
-                if(current_lane > LANE_0)
-                  current_lane = current_lane - 4.0;
+                if(fp->is_cell_free((GRID_COLS-1)- int(car_d / LANE_WIDTH), current_lane+4.0))
+                {
+
+                  if(current_lane > LANE_0)
+                  {
+                    current_lane = current_lane - 1.0;
+                    current_tgt_speed = 35.0;
+                  }
+                } else{
+                  exists_path = false;
+                }
                 break;
               case '/':
-                if(current_lane < LANE_2)
-                  current_lane = current_lane + 4.0;
+                if(fp->is_cell_free((GRID_COLS-1)- int(car_d / LANE_WIDTH), current_lane+4.0)) {
+                  if (current_lane < LANE_2) {
+                    current_lane = current_lane + 1.0;
+                    current_tgt_speed = 35.0;
+                  }
+                } else{
+                  exists_path = false;
+                }
                 break;
             }
           }
 
           current_speed += calculateAcceleration(car_speed, current_tgt_speed);
-          if((collide_nwse[0] != 0) && (path.size() == 0))
+          //if((collide_nwse[0] != 0) && (!exists_path))
+          if((collide_nwse[0] != 0))
           {
-            current_tgt_speed = 10.0 + 15.0*(collide_nwse[0]/MIN_CAR_DIST);
-            cout << "POSSIBLE FRONT COLLISION " << collide_nwse[0] << " New Tgt speed: " << current_tgt_speed << endl;
+            current_tgt_speed = 10.0 + 8.0*(collide_nwse[0]/MIN_CAR_DIST);
+            cout << "POSSIBLE FRONT COLLISION " << collide_nwse[0] << "\nNew Tgt speed: " << current_tgt_speed << endl;
 
           }
           else{
             current_tgt_speed = MAX_SPEED;
           }
+
           for(int i = 0; i < current_path_size; ++i)
           {
             //cout << previous_path_x[i] <<",";
             next_x_vals.push_back(previous_path_x[i]);
             next_y_vals.push_back(previous_path_y[i]);
           }
-          cout << endl;
           /* get two points from the last position to generate a new trajectory */
           if(current_path_size > 1)
           {
@@ -564,7 +583,7 @@ int main() {
             Y.push_back(p[1]);
             //cout << "spx:" << p[0] << " spy:" << p[1] << endl;
           }
-          cout << "--------------\npos_x:" << pos_x << " pos_y:" << pos_y << " yaw: " << yaw << endl << endl;
+//          cout << "--------------\npos_x:" << pos_x << " pos_y:" << pos_y << " yaw: " << yaw << endl << endl;
           for (int j = 0; j < X.size(); ++j)
           {
             double transl_x = X[j] - pos_x;
@@ -591,7 +610,7 @@ int main() {
           double dist_x = 20;
           double dist_y = spl(dist_x);
           double mag_dist = distance(0, 0,dist_x, dist_y);
-          cout << "distx: " << dist_x << " dist y:" << dist_y << " magxy: " << mag_dist << endl;
+//          cout << "distx: " << dist_x << " dist y:" << dist_y << " magxy: " << mag_dist << endl;
 
             /* the spline rotated the coords so we need to rotate them back */
 
@@ -600,7 +619,7 @@ int main() {
             {
 //							next_x_vals.push_back(car_x+(dist_inc*i)*cos(deg2rad(car_yaw)));
 //              next_y_vals.push_back(car_y+(dist_inc*i)*sin(deg2rad(car_yaw)));
-              cout << "." ;
+//              cout << "." ;
               #if test
               cout << "." ;
 							auto cords = getXY(car_s+(dist_inc*i),current_lane,map_waypoints_s,map_waypoints_x,map_waypoints_y);

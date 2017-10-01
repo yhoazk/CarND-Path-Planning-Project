@@ -73,7 +73,7 @@ public:
 
   void clean_grid(void);
   void show_grid(void);
-  std::vector<char> solution;
+  bool is_cell_free(int x, int y);
   std::vector<char> find_path();
 };
 
