@@ -199,7 +199,7 @@ double calculateAcceleration(double current, double target)
   static double differen_term = 0;
   static double last_err = 0;
 
-  static double P=0.018,I=0.00003,D=0.0019;
+  static double P=0.019,I=0.00003,D=0.0019;
 
   double increment;
   double err = target - current;
@@ -459,9 +459,9 @@ int main() {
           if((collide_nwse[0] != 0))
           {
 
-            if(!exists_path || (0.0 < collide_nwse[0]) && ((7.0)> collide_nwse[0])){
+            if(!exists_path || (0.0 < collide_nwse[0]) && ((25.0)> collide_nwse[0])){
 
-              current_tgt_speed = 10.0 + 11.0*(collide_nwse[0]/MIN_CAR_DIST);
+              current_tgt_speed = 10.0 + 8.0*(collide_nwse[0]/MIN_CAR_DIST);
 
               if(current_tgt_speed < 10)
               {
