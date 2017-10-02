@@ -375,7 +375,7 @@ int main() {
             if( (delta_s > 0 ) && delta_s < MIN_CAR_DIST)
             {
               /*The car is close*/
-              if (delta_d < 2.0){
+              if (delta_d < 3.0){
                 collide_nwse[0] = delta_s;
               }
 
@@ -420,7 +420,7 @@ int main() {
 //                    current_lane = current_lane - LANE_WIDTH/2.0;
                     cout << "Change to lane: " << current_lane << endl;
                     next_lane = current_lane - LANE_WIDTH;
-//                    current_tgt_speed = 35.0;
+                    current_tgt_speed = 40.0;
                     maneuver_done = false;
                   }
                 } else{
@@ -434,7 +434,7 @@ int main() {
                     next_lane = current_lane + LANE_WIDTH;
 //                    current_lane = current_lane + LANE_WIDTH/2.0;
                     cout << "Change to lane: " << current_lane << endl;
-//                    current_tgt_speed = 35.0;
+                    current_tgt_speed = 40.0;
                     maneuver_done = false;
                   }
                 } else{
@@ -452,7 +452,7 @@ int main() {
 //            current_lane += (next_lane-current_lane)*0.3;
             cout << "NextLane "  << next_lane<<  endl;
           } else{
-            current_lane += (next_lane-current_lane)*0.1;
+            current_lane += (next_lane-current_lane)*0.23;
           }
 
           current_speed += calculateAcceleration(car_speed, current_tgt_speed);
@@ -461,15 +461,17 @@ int main() {
 
             if(!exists_path || (0.0 < collide_nwse[0]) && ((25.0)> collide_nwse[0])){
 
-              current_tgt_speed = 10.0 + 8.0*(collide_nwse[0]/MIN_CAR_DIST);
+              current_tgt_speed = 10.0 + 7.0*(collide_nwse[0]/MIN_CAR_DIST);
 
               if(current_tgt_speed < 10)
               {
                 current_tgt_speed = 10.0;
               }
               cout << "BREAKING!!!!" << endl;
+            } else{
+              current_tgt_speed = 38; //reduce speed
+              cout << "POSSIBLE FRONT COLLISION " << collide_nwse[0] << "\nNew Tgt speed: " << current_tgt_speed << endl;
             }
-            cout << "POSSIBLE FRONT COLLISION " << collide_nwse[0] << "\nNew Tgt speed: " << current_tgt_speed << endl;
           }
           else{
             current_tgt_speed = MAX_SPEED;
