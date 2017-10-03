@@ -175,6 +175,18 @@ Once the maneuver is done, the controller is free to act again.
 
 ![maneuver_FSM](maneuver-fsm.png)
 
+### Path generation
+
+The path generation is implemented using the [spline library](https://github.com/yhoazk/CarND-Path-Planning-Project/blob/master/src/spline.h), but
+the spline library alone does not meets the jerk minimizing trajectories. In this implementation
+as a way to minimize the lateral jerk the change of lane line is smoothed by the *P-controller*.
+
+The frenet coordinate `d` changes only proportional to the difference in the desired lane and
+current lane. Next is a small diagram which shows how the paths are being generated.
+
+![path_main](path_main.png)
+
+
 
 
 
