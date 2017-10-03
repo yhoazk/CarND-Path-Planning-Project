@@ -97,7 +97,6 @@ the path has processed since last time.
     git checkout e94b6e1
     ```
 
-## Project Instructions and Rubric
 
 ## Details of the present implementation
 
