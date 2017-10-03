@@ -334,7 +334,6 @@ int main() {
           roll_count++;
           bool exists_path = false;
 
-          fp->set_me((GRID_COLS-1)- int(car_d / LANE_WIDTH), FRONT_GRID);
 
 
           double pos_x, pos_y, yaw;
@@ -360,7 +359,7 @@ int main() {
 
             col = (GRID_COLS-1) - int(vehicle_d / LANE_WIDTH);
             //row = FRONT_GRID - int((car_s - vehicle_s)/LANE_WIDTH);
-            row = FRONT_GRID - int((car_s - vehicle_s)/(LANE_WIDTH));
+            row = FRONT_GRID - int((car_s - vehicle_s)/(LANE_WIDTH+1));
             if((row < GRID_ROWS) && (col < GRID_COLS))
             {
               fp->set_vehicle(col, row);
@@ -389,6 +388,7 @@ int main() {
           fp->set_goal(0, 14);
           fp->set_goal(1, 14);
           fp->set_goal(2, 14);
+          fp->set_me((GRID_COLS-1)- int(car_d / LANE_WIDTH), FRONT_GRID);
           //fp->set_goal((GRID_COLS-1)- int(car_d / LANE_WIDTH), 14);
           fp->show_grid();
           auto path = fp->find_path();
@@ -452,16 +452,16 @@ int main() {
 //            current_lane += (next_lane-current_lane)*0.3;
             cout << "NextLane "  << next_lane<<  endl;
           } else{
-            current_lane += (next_lane-current_lane)*0.23;
+            current_lane += (next_lane-current_lane)*0.25 ;
           }
 
           current_speed += calculateAcceleration(car_speed, current_tgt_speed);
           if((collide_nwse[0] != 0))
           {
 
-            if(!exists_path || (0.0 < collide_nwse[0]) && ((25.0)> collide_nwse[0])){
+            if(!exists_path || (0.0 < collide_nwse[0]) && ((30.0)> collide_nwse[0])){
 
-              current_tgt_speed = 10.0 + 7.0*(collide_nwse[0]/MIN_CAR_DIST);
+              current_tgt_speed = 10.0 + 4.0*(collide_nwse[0]/MIN_CAR_DIST);
 
               if(current_tgt_speed < 10)
               {
@@ -469,7 +469,7 @@ int main() {
               }
               cout << "BREAKING!!!!" << endl;
             } else{
-              current_tgt_speed = 38; //reduce speed
+              current_tgt_speed = 35; //reduce speed
               cout << "POSSIBLE FRONT COLLISION " << collide_nwse[0] << "\nNew Tgt speed: " << current_tgt_speed << endl;
             }
           }

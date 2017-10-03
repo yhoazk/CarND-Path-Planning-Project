@@ -143,6 +143,11 @@ std::vector<char> path_finder::_find_path(node* root)
         {
           continue;
         }
+
+        if(node_map[ (current_node->y-1) ][ (current_node->x)+inc_x ].val == '.')
+        {
+          continue;
+        }
       }
 
       if(next_node->y > 13)
