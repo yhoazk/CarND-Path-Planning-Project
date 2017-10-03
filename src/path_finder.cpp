@@ -290,7 +290,8 @@ bool path_finder::is_lane_free(int x, int y)
       if(node_map[y][x].val == '#'
         && node_map[y-1][x].val == '#'
         && node_map[y-2][x].val == '#'
-        && node_map[y-3][x].val == '#'
+        && node_map[y+1][x].val == '#'
+       && node_map[y+2][x].val == '#'
           )
       {
         state = true;

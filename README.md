@@ -186,6 +186,17 @@ current lane. Next is a small diagram which shows how the paths are being genera
 ![path_main](path_main.png)
 
 
+## Result:
+
+The car is able to complete the map without collisions.
+This was tested 3 times.
+
+Here is a video, but the quality is horrible. Still demostrates the ability of the car to
+aviod crashes and keep a decent speed.
+![](https://youtu.be/1gHnJhYkr8E)
+
+
+
 
 
 
