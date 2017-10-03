@@ -1,6 +1,6 @@
 # CarND-Path-Planning-Project
 Self-Driving Car Engineer Nanodegree Program
-   
+
 ### Simulator.
 
 ### Goals
@@ -28,9 +28,9 @@ Then some parameters have to be controlled easily:
 * Current lane
 * Target speed
 * Min distance to other cars
-* 
+*
 
-The controller must take the past points and then create a new trajectory from those points, this reduces the 
+The controller must take the past points and then create a new trajectory from those points, this reduces the
 jerk due to non-smooth transitions.
 
 
@@ -54,13 +54,13 @@ Here is the data provided from the Simulator to the C++ Program
 #### Previous path data given to the Planner
 
 //Note: Return the previous list but with processed points removed, can be a nice tool to show how far along
-the path has processed since last time. 
+the path has processed since last time.
 
 ["previous_path_x"] The previous list of x points previously given to the simulator
 
 ["previous_path_y"] The previous list of y points previously given to the simulator
 
-#### Previous path's end s and d values 
+#### Previous path's end s and d values
 
 ["end_path_s"] The previous list's last point's frenet s value
 
@@ -68,7 +68,7 @@ the path has processed since last time.
 
 #### Sensor Fusion Data, a list of all other car's attributes on the same side of the road. (No Noise)
 
-["sensor_fusion"] A 2d vector of cars and then that car's [car's unique ID, car's x position in map coordinates, car's y position in map coordinates, car's x velocity in m/s, car's y velocity in m/s, car's s position in frenet coordinates, car's d position in frenet coordinates. 
+["sensor_fusion"] A 2d vector of cars and then that car's [car's unique ID, car's x position in map coordinates, car's y position in map coordinates, car's x velocity in m/s, car's y velocity in m/s, car's s position in frenet coordinates, car's d position in frenet coordinates.
 
 ## Details
 
@@ -92,7 +92,7 @@ the path has processed since last time.
   * Run  `install-fedora.sh`
   * If you install from source, checkout to commit `e94b6e1`, i.e.
     ```
-    git clone https://github.com/uWebSockets/uWebSockets 
+    git clone https://github.com/uWebSockets/uWebSockets
     cd uWebSockets
     git checkout e94b6e1
     ```
@@ -103,47 +103,79 @@ the path has processed since last time.
 
 In this project we are limited by the nature of the information flow, in this case the information comes
 periodically and also we can send it periodically. Because of this there will always be a delay which we
-must compensate. 
+must compensate.
 
 The method to compensate for delays is to calculate the next position with the data given by the **sensor fusion**.
 Another condition to be considered is the position buffer. This buffer is filled with the next positions for
 the car, which are processed every 0.02 seconds **BUT** normally not all the points are processed, then the
-buffer contains information from the last step. 
+buffer contains information from the last step.
 
 In an attempt to use the code implemented during the lections, this implementation creates a grid arond
 the vehicle then makes a discrete version of the map but much more reduced. Then this grid is passed to the
-path finding algorithm which has extra conditions. The extra conditions implement part of the FSM which 
+path finding algorithm which has extra conditions. The extra conditions implement part of the FSM which
 we saw in the lections.
 
 - There shall not be change of line if there are vehicles at my side or one position behind of the desired lane.
 Example:
 ```
    0 1 2
- 0| # # # 
- 1| . # # 
- 2| # | . 
- 3| # | # 
- 4| # | # 
- 5| # | # 
+ 0| # # #
+ 1| . # #
+ 2| # | .
+ 3| # | #
+ 4| # | #
+ 5| # | #
  6| . | . <- This maneuver shall not be possible, as it's dangerous
- 7| # \ # 
- 8| # . | 
- 9| # # | 
-10| # # | 
-11| # # | 
-12| # # | 
-13| # # | 
-14| G G G 
+ 7| # \ #
+ 8| # . |
+ 9| # # |
+10| # # |
+11| # # |
+12| # # |
+13| # # |
+14| G G G
 ```
 
-Then no path shall be returned in this case.
+Then no path shall be returned in this case. This is implemented in [`src/path_finder.cpp:128-134`](https://github.com/yhoazk/CarND-Path-Planning-Project/blob/master/src/path_finder.cpp#L128-L134)
 
-- The preferred movements in order of priority are:
+- The preferred movements in order of priority are: ([`src/path_finder.cpp:45`](https://github.com/yhoazk/CarND-Path-Planning-Project/blob/master/src/path_finder.cpp#L45))
     1. Keep lane
     2. Change to left lane, as in the real world
     3. Change to right lane.
-    
-- 
+
+
+
+- If there's a lane of cars in front, return no existing path, and apply brakes. [`src/path_finder.cpp:194`](https://github.com/yhoazk/CarND-Path-Planning-Project/blob/master/src/path_finder.cpp#L194)
+
+Also an external condition implemented in the main loop checks that the given lane in case of change of lane line. This is implemented in the function [`src/path_finder.cpp::is_lane_free`](https://github.com/yhoazk/CarND-Path-Planning-Project/blob/master/src/path_finder.cpp#L279-L301)
+
+* As the vehicle is not capable of moving in lateral direction only, this is represented in the possible next nodes.
+  As follows.
+```
+       O    <- The veicle
+     / | \
+    #  #  # <- Turn right, keep lane and turn left respectively
+```
+
+This way the path finding algorithm represents better the car dynamics.
+
+### Maneuver controller
+
+As we choose to use a discrete map, the decisions made by the path_finder algorithm are also discrete, if we
+just change the lane in one step the jerk will exceed the permited value. To ensure a smooth, but yet fast response
+in a change of lane a *P-controller* and a small *FSM* were implemented. [`src/main.cpp:447`](https://github.com/yhoazk/CarND-Path-Planning-Project/blob/master/src/main.cpp#L447)
+
+![P-controller](p-controller.png)
+
+At first the car was waving from one way to another because some vershoot due to the delay on the information.
+Then the FSM to control the action of the controller was also implemented.
+
+This is a quite simple FSM which only checks if the maneuver is complete.
+Once the maneuver is done, the controller is free to act again.
+
+![maneuver_FSM](maneuver-fsm.png)
+
+
 
 
 ## Tips
@@ -151,6 +183,6 @@ Then no path shall be returned in this case.
 A really helpful resource for doing this project and creating smooth trajectories was using http://kluge.in-chemnitz.de/opensource/spline/, the spline function is in a single hearder file is really easy to use.
 
 
-capture traffic to simulator: 
+capture traffic to simulator:
 
 sudo tcpdump -Aqi lo src localhost and port 4567 and greater 512
