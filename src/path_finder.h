@@ -10,7 +10,7 @@
 #include <queue>
 
 #define GRID_COLS (3)
-#define FRONT_GRID (2)
+#define FRONT_GRID (5)
 #define REAR_GRID (13)
 #define GRID_ROWS (FRONT_GRID + REAR_GRID ) /* Number of lane lines */
 
@@ -73,7 +73,7 @@ public:
 
   void clean_grid(void);
   void show_grid(void);
-  bool is_cell_free(int x, int y);
+  bool is_lane_free(int x, int y);
   std::vector<char> find_path();
 };
 

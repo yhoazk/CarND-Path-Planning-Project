@@ -1,8 +1,6 @@
 #include <fstream>
 #include <math.h>
 #include <uWS/uWS.h>
-#include <chrono>
-#include <iostream>
 #include <thread>
 #include <vector>
 #include "Eigen-3.3/Eigen/Core"
@@ -180,7 +178,6 @@ vector<double> getXY(double s, double d, vector<double> maps_s, vector<double> m
 
 double current_lane = LANE_1;
 double next_lane = LANE_1;
-bool   change_lane= false;
 double current_tgt_speed = 40.5;
 double current_speed = 0.0; // controls the acceleration
 
@@ -192,7 +189,9 @@ vector<double> map_waypoints_s;
 vector<double> map_waypoints_dx;
 vector<double> map_waypoints_dy;
 
-
+/*
+ * PID controller for breaking and accelerating
+ * */
 double calculateAcceleration(double current, double target)
 {
   static double integral_term = 0;
@@ -209,9 +208,6 @@ double calculateAcceleration(double current, double target)
   integral_term += err;
 
   increment = (P * err) + (I * integral_term) + (D * differen_term);
-
- // cout << "inc: "  << increment <<  "  err: " << err  << " Veh speed: " << current << endl;
-
 
   return  increment;
 }
@@ -254,8 +250,6 @@ int main() {
   uWS::Hub h;
 
   path_finder* fp = new path_finder();
-  unsigned int roll_count = 0;
-  unsigned int period = 3; // process every 10 messages
   bool maneuver_done = true;
   /* Resize the grid to the desired size and fill */
 
@@ -286,7 +280,7 @@ int main() {
   	map_waypoints_dy.push_back(d_y);
   }
 
-  h.onMessage([&maneuver_done,  &roll_count, &period, &fp, &map_waypoints_x,&map_waypoints_y,&map_waypoints_s,&map_waypoints_dx,&map_waypoints_dy](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
+  h.onMessage([&maneuver_done,  &fp, &map_waypoints_x,&map_waypoints_y,&map_waypoints_s,&map_waypoints_dx,&map_waypoints_dy](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
                      uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
@@ -331,7 +325,6 @@ int main() {
           vector<double> next_y_vals;
 
 
-          roll_count++;
           bool exists_path = false;
 
 
@@ -370,7 +363,7 @@ int main() {
             double delta_s = vehicle_s - car_s;
             double delta_d = fabs(vehicle_d- car_d); // difference in lane
             float v_lane;
-
+            /* Check that there are not vehicles in front of us */
             if( (delta_s > 0 ) && delta_s < MIN_CAR_DIST)
             {
               /*The car is close*/
@@ -382,12 +375,11 @@ int main() {
 
           }
 
-
-          /* Get possible collisions */
-          //fp->set_goal((GRID_COLS-1)- int(car_d / LANE_WIDTH), 13);
-          fp->set_goal(0, 14);
-          fp->set_goal(1, 14);
-          fp->set_goal(2, 14);
+          /* Setting all the final points in the grid as goal points, the path finding algorithm
+           * will select the one in front */
+          fp->set_goal(0, GRID_ROWS-1);
+          fp->set_goal(1, GRID_ROWS-1);
+          fp->set_goal(2, GRID_ROWS-1);
           fp->set_me((GRID_COLS-1)- int(car_d / LANE_WIDTH), FRONT_GRID);
           //fp->set_goal((GRID_COLS-1)- int(car_d / LANE_WIDTH), 14);
           fp->show_grid();
@@ -399,11 +391,13 @@ int main() {
 
 
           double pos_prev_x, pos_prev_y;
+
+          /* There is a path to follow and the last maneuver is done to continue  */
           vector<double> X, Y;
           if(!path.empty() && maneuver_done)
           {
             reverse(path.begin(), path.end());
-            cout << "MANEUUUVERRR ----------------" << endl;
+            cout << "MANEUUUVERRR -" << endl;
             switch (path[0])
             {
               default:
@@ -413,14 +407,13 @@ int main() {
                 maneuver_done = true;
                 break;
               case '\\':
-                if(fp->is_cell_free((GRID_COLS-1)- int(car_d / LANE_WIDTH), current_lane-4.0)) // there is not a car at the side
+                if(fp->is_lane_free((GRID_COLS-1)- int(car_d / LANE_WIDTH)-1, FRONT_GRID)) // there is not a car at the side
                 {
                   if(current_lane > LANE_0)
                   {
-//                    current_lane = current_lane - LANE_WIDTH/2.0;
                     cout << "Change to lane: " << current_lane << endl;
                     next_lane = current_lane - LANE_WIDTH;
-                    current_tgt_speed = 40.0;
+                    current_tgt_speed = 43.0;
                     maneuver_done = false;
                   }
                 } else{
@@ -429,12 +422,11 @@ int main() {
                 }
                 break;
               case '/':
-                if(fp->is_cell_free((GRID_COLS-1)- int(car_d / LANE_WIDTH), current_lane+4.0)) {
+                if(fp->is_lane_free((GRID_COLS-1)- int(car_d / LANE_WIDTH)+1, FRONT_GRID)) {
                   if (current_lane < LANE_2) {
                     next_lane = current_lane + LANE_WIDTH;
-//                    current_lane = current_lane + LANE_WIDTH/2.0;
                     cout << "Change to lane: " << current_lane << endl;
-                    current_tgt_speed = 40.0;
+                    current_tgt_speed = 43.0;
                     maneuver_done = false;
                   }
                 } else{
@@ -444,15 +436,15 @@ int main() {
                 break;
             }
           }
-          cout << "maneuver done:" << maneuver_done << " car_d-current_lane" << car_d-current_lane << endl;
+          cout << "maneuver done:" << maneuver_done << " car_d-current_lane: " << car_d-current_lane << endl;
           /*Keep inside a lane */
-          if((fabs(car_d-next_lane) < 0.5f) /*&& ((roll_count%period) == 0)*/ )
+          if((fabs(car_d-next_lane) < 0.5f) )
           {
             maneuver_done = true;
 //            current_lane += (next_lane-current_lane)*0.3;
             cout << "NextLane "  << next_lane<<  endl;
           } else{
-            current_lane += (next_lane-current_lane)*0.25 ;
+            current_lane += (next_lane-current_lane)*0.23 ; // K factor for lane change
           }
 
           current_speed += calculateAcceleration(car_speed, current_tgt_speed);
@@ -479,7 +471,6 @@ int main() {
 
           for(int i = 0; i < current_path_size; ++i)
           {
-            //cout << previous_path_x[i] <<",";
             next_x_vals.push_back(previous_path_x[i]);
             next_y_vals.push_back(previous_path_y[i]);
           }
@@ -518,7 +509,6 @@ int main() {
             Y.push_back(p[1]);
             //cout << "spx:" << p[0] << " spy:" << p[1] << endl;
           }
-//          cout << "--------------\npos_x:" << pos_x << " pos_y:" << pos_y << " yaw: " << yaw << endl << endl;
           for (int j = 0; j < X.size(); ++j)
           {
             double transl_x = X[j] - pos_x;
@@ -528,7 +518,6 @@ int main() {
             ny = transl_x * sin(0.0f-yaw) + transl_y * cos(0.0f - yaw);
             X[j] = nx;
             Y[j] = ny;
-            //cout << "px:" << X[j] << " py:" << Y[j] << " transl_x:" << transl_x << " transly: " << transl_y << " sin: " <<  sin(yaw) << " cos: " << cos(yaw) << endl;
           }
 
           tk::spline spl;
@@ -539,53 +528,47 @@ int main() {
           cout << "Real car speed: " << car_speed << endl;
             /* Generate a smooth trajectory between the current position and the next waypoint */
 
-          //  auto spline = getNextPoints(car_s-1,car_d, yaw);
-            //auto cords = getXY(car_s-(1),car_d,map_waypoints_s,map_waypoints_x,map_waypoints_y);
           double increment = 0;
           double dist_x = 20;
           double dist_y = spl(dist_x);
           double mag_dist = distance(0, 0,dist_x, dist_y);
-//          cout << "distx: " << dist_x << " dist y:" << dist_y << " magxy: " << mag_dist << endl;
 
-            /* the spline rotated the coords so we need to rotate them back */
+          /* the spline rotated the coords so we need to rotate them back */
 
 
-            for(int i = 0; i < CTRL_VECTOR_SIZE-previous_path_x.size(); i++)
-            {
-//							next_x_vals.push_back(car_x+(dist_inc*i)*cos(deg2rad(car_yaw)));
-//              next_y_vals.push_back(car_y+(dist_inc*i)*sin(deg2rad(car_yaw)));
-//              cout << "." ;
-              #if test
-              cout << "." ;
-							auto cords = getXY(car_s+(dist_inc*i),current_lane,map_waypoints_s,map_waypoints_x,map_waypoints_y);
-              next_x_vals.push_back(cords[0]);
-              next_y_vals.push_back(cords[1]);
-              #endif
-              /* we must take into account the curvature or the speed goes out of bound */
-              double N =  (mag_dist/ (0.02f * current_speed / 2.24f));
-              double x = increment+(dist_x/N);
-              double y = spl(x);
-              double x_tmp=0, y_tmp=0;
-              increment = x;
-              x_tmp = x;
-              y_tmp = y;
+          for(int i = 0; i < CTRL_VECTOR_SIZE-previous_path_x.size(); i++)
+          {
+            #if test
+            cout << "." ;
+            auto cords = getXY(car_s+(dist_inc*i),current_lane,map_waypoints_s,map_waypoints_x,map_waypoints_y);
+            next_x_vals.push_back(cords[0]);
+            next_y_vals.push_back(cords[1]);
+            #endif
+            /* we must take into account the curvature or the speed goes out of bound */
+            double N =  (mag_dist/ (0.02f * current_speed / 2.24f));
+            double x = increment+(dist_x/N);
+            double y = spl(x);
+            double x_tmp=0, y_tmp=0;
+            increment = x;
+            x_tmp = x;
+            y_tmp = y;
 
-              x = (x_tmp * cos(yaw) - y_tmp * sin(yaw));
-              y = (x_tmp * sin(yaw) + y_tmp * cos(yaw));
+            x = (x_tmp * cos(yaw) - y_tmp * sin(yaw));
+            y = (x_tmp * sin(yaw) + y_tmp * cos(yaw));
 
-              x += pos_x; y += pos_y;
+            x += pos_x; y += pos_y;
 
-							next_x_vals.push_back(x);
-							next_y_vals.push_back(y);
-            }
-						cout << "car_d:" << car_d << " car_s: " << car_s << endl;
-          	msgJson["next_x"] = next_x_vals;
-          	msgJson["next_y"] = next_y_vals;
+            next_x_vals.push_back(x);
+            next_y_vals.push_back(y);
+          }
+          cout << "car_d:" << car_d << " car_s: " << car_s << endl;
+          msgJson["next_x"] = next_x_vals;
+          msgJson["next_y"] = next_y_vals;
 
-          	auto msg = "42[\"control\","+ msgJson.dump()+"]";
-          	//this_thread::sleep_for(chrono::milliseconds(1000));
-          	ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
-          
+          auto msg = "42[\"control\","+ msgJson.dump()+"]";
+          //this_thread::sleep_for(chrono::milliseconds(1000));
+          ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
+
         }
       } else {
         // Manual driving

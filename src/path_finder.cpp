@@ -76,13 +76,11 @@ std::vector<char> path_finder::_find_path(node* root)
   node* goal_node; // if found
   node_queue.push(root);
   int inc_x;
-  size_t g_x,g_y; // goal coordinates in the map
   static std::vector<char> path;
   std::vector<int> possible_movs;
   path.clear();
   while (node_queue.empty() != true && found == false && finished != true)
   {
-    next_node = nullptr;
     possible_movs = {center_lane, leftmost_lane,  rigthmost_lane};
     current_node = node_queue.front();
     node_queue.pop();
@@ -148,16 +146,14 @@ std::vector<char> path_finder::_find_path(node* root)
         {
           continue;
         }
+
+        if(node_map[ (current_node->y+1) ][ (current_node->x) ].val == '.')
+        {
+          continue;
+        }
       }
 
-      if(next_node->y > 13)
-      {
-        std::cout << "ENDD"<< std::endl;
-      }
       /* Fill the child info */
-      if('.' == next_node->val)
-      {
-      }
       if('#' == next_node->val)
       {
         // std::cout << "next_node x: " << next_node->x << "  y: " << next_node->y << '\n';
@@ -280,7 +276,7 @@ void path_finder::set_goal(int x, int y)
   }
 }
 
-bool path_finder::is_cell_free(int x, int y)
+bool path_finder::is_lane_free(int x, int y)
 {
   bool state = false;
   if(x < 0 || x> 2 || y < 0){
@@ -291,7 +287,11 @@ bool path_finder::is_cell_free(int x, int y)
 
     if(x < GRID_COLS && y < GRID_ROWS)
     {
-      if(node_map[y][x].val == '#')
+      if(node_map[y][x].val == '#'
+        && node_map[y-1][x].val == '#'
+        && node_map[y-2][x].val == '#'
+        && node_map[y-3][x].val == '#'
+          )
       {
         state = true;
       }

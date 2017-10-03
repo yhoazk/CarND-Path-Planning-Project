@@ -2,7 +2,6 @@
 Self-Driving Car Engineer Nanodegree Program
    
 ### Simulator.
-You can download the Term3 Simulator which contains the Path Planning Project from the [releases tab (https://github.com/udacity/self-driving-car-sim/releases).
 
 ### Goals
 In this project your goal is to safely navigate around a virtual highway with other traffic that is driving +-10 MPH of the 50 MPH speed limit. You will be provided the car's localization and sensor fusion data, there is also a sparse map list of waypoints around the highway. The car should try to go as close as possible to the 50 MPH speed limit, which means passing slower traffic when possible, note that other cars will try to change lanes too. The car should avoid hitting other cars at all cost as well as driving inside of the marked road lanes at all times, unless going from one lane to another. The car should be able to make one complete loop around the 6946m highway. Since the car is trying to go 50 MPH, it should take a little over 5 minutes to complete 1 loop. Also the car should not experience total acceleration over 10 m/s^2 and jerk that is greater than 50 m/s^3.
@@ -77,9 +76,7 @@ the path has processed since last time.
 
 2. There will be some latency between the simulator running and the path planner returning a path, with optimized code usually its not very long maybe just 1-3 time steps. During this delay the simulator will continue using points that it was last given, because of this its a good idea to store the last points you have used so you can have a smooth transition. previous_path_x, and previous_path_y can be helpful for this transition since they show the last points given to the simulator controller with the processed points already removed. You would either return a path that extends this previous path or make sure to create a new path that has a smooth transition with this last path.
 
-## Tips
 
-A really helpful resource for doing this project and creating smooth trajectories was using http://kluge.in-chemnitz.de/opensource/spline/, the spline function is in a single hearder file is really easy to use.
 
 ---
 
@@ -89,14 +86,10 @@ A really helpful resource for doing this project and creating smooth trajectorie
  * All OSes: [click here for installation instructions](https://cmake.org/install/)
 * make >= 4.1
   * Linux: make is installed by default on most Linux distros
-  * Mac: [install Xcode command line tools to get make](https://developer.apple.com/xcode/features/)
-  * Windows: [Click here for installation instructions](http://gnuwin32.sourceforge.net/packages/make.htm)
 * gcc/g++ >= 5.4
   * Linux: gcc / g++ is installed by default on most Linux distros
-  * Mac: same deal as make - [install Xcode command line tools]((https://developer.apple.com/xcode/features/)
-  * Windows: recommend using [MinGW](http://www.mingw.org/)
 * [uWebSockets](https://github.com/uWebSockets/uWebSockets)
-  * Run either `install-mac.sh` or `install-ubuntu.sh`.
+  * Run  `install-fedora.sh`
   * If you install from source, checkout to commit `e94b6e1`, i.e.
     ```
     git clone https://github.com/uWebSockets/uWebSockets 
@@ -104,53 +97,58 @@ A really helpful resource for doing this project and creating smooth trajectorie
     git checkout e94b6e1
     ```
 
-## Editor Settings
-
-We've purposefully kept editor configuration files out of this repo in order to
-keep it as simple and environment agnostic as possible. However, we recommend
-using the following settings:
-
-* indent using spaces
-* set tab width to 2 spaces (keeps the matrices in source code aligned)
-
-## Code Style
-
-Please (do your best to) stick to [Google's C++ style guide](https://google.github.io/styleguide/cppguide.html).
-
 ## Project Instructions and Rubric
 
-Note: regardless of the changes you make, your project must be buildable using
-cmake and make!
+## Details of the present implementation
+
+In this project we are limited by the nature of the information flow, in this case the information comes
+periodically and also we can send it periodically. Because of this there will always be a delay which we
+must compensate. 
+
+The method to compensate for delays is to calculate the next position with the data given by the **sensor fusion**.
+Another condition to be considered is the position buffer. This buffer is filled with the next positions for
+the car, which are processed every 0.02 seconds **BUT** normally not all the points are processed, then the
+buffer contains information from the last step. 
+
+In an attempt to use the code implemented during the lections, this implementation creates a grid arond
+the vehicle then makes a discrete version of the map but much more reduced. Then this grid is passed to the
+path finding algorithm which has extra conditions. The extra conditions implement part of the FSM which 
+we saw in the lections.
+
+- There shall not be change of line if there are vehicles at my side or one position behind of the desired lane.
+Example:
+```
+   0 1 2
+ 0| # # # 
+ 1| . # # 
+ 2| # | . 
+ 3| # | # 
+ 4| # | # 
+ 5| # | # 
+ 6| . | . <- This maneuver shall not be possible, as it's dangerous
+ 7| # \ # 
+ 8| # . | 
+ 9| # # | 
+10| # # | 
+11| # # | 
+12| # # | 
+13| # # | 
+14| G G G 
+```
+
+Then no path shall be returned in this case.
+
+- The preferred movements in order of priority are:
+    1. Keep lane
+    2. Change to left lane, as in the real world
+    3. Change to right lane.
+    
+- 
 
 
-## Call for IDE Profiles Pull Requests
+## Tips
 
-Help your fellow students!
-
-We decided to create Makefiles with cmake to keep this project as platform
-agnostic as possible. Similarly, we omitted IDE profiles in order to ensure
-that students don't feel pressured to use one IDE or another.
-
-However! I'd love to help people get up and running with their IDEs of choice.
-If you've created a profile for an IDE that you think other students would
-appreciate, we'd love to have you add the requisite profile files and
-instructions to ide_profiles/. For example if you wanted to add a VS Code
-profile, you'd add:
-
-* /ide_profiles/vscode/.vscode
-* /ide_profiles/vscode/README.md
-
-The README should explain what the profile does, how to take advantage of it,
-and how to install it.
-
-Frankly, I've never been involved in a project with multiple IDE profiles
-before. I believe the best way to handle this would be to keep them out of the
-repo root to avoid clutter. My expectation is that most profiles will include
-instructions to copy files to a new location to get picked up by the IDE, but
-that's just a guess.
-
-One last note here: regardless of the IDE used, every submitted project must
-still be compilable with cmake and make./
+A really helpful resource for doing this project and creating smooth trajectories was using http://kluge.in-chemnitz.de/opensource/spline/, the spline function is in a single hearder file is really easy to use.
 
 
 capture traffic to simulator: 
