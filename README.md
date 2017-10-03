@@ -196,7 +196,7 @@ aviod crashes and keep a decent speed.
 ![](https://youtu.be/1gHnJhYkr8E)
 
 
-
+[![horrible vieo](https://img.youtube.com/vi/1gHnJhYkr8E/0.jpg)](https://www.youtube.com/watch?v=1gHnJhYkr8E)
 
 
 
